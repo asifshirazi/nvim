@@ -56,7 +56,7 @@ Leader is `\` (Vim's default). Press it and pause to get a
 | key | does |
 |---|---|
 | `<C-t>` | toggle the NERDTree sidebar |
-| `<Tab>` / `<S-Tab>` | next / previous buffer |
+| `<Tab>` / `<S-Tab>` | next / previous tab in this window's own strip |
 | `<C-q>` | close buffer, keeping the window layout |
 | `\f` | Ranger |
 | `\tf` | Telescope find files (dropdown, no preview) |
@@ -104,6 +104,7 @@ The statusline follows along automatically wherever the theme ships a matching
 | Command line | noice (floating cmdline) + nvim-cmp sources |
 | Sessions | auto-session, plus `:Restart` |
 | Statusline | vim-airline |
+| Buffer tabs | winbar strip, drawn per window (in this config) |
 | Icons | vim-devicons, nerdtree-syntax-highlight |
 | Cursor | smear-cursor (animated cursor trail) |
 
@@ -117,7 +118,8 @@ config/
   nerdtree.vim    NERDTree options, icons and highlights
   telescope.vim   NERDTree's `m` menu as a Telescope picker
   themery.vim     the colorscheme switcher and its discovered list
-  airline.vim     statusline and buffer tabline options
+  airline.vim     statusline options
+  winbar.vim      per-window buffer tabs, and the <Tab> cycling they feed
   autoreload.vim  reload files changed outside nvim, even mid-edit
 autoload/
   restart.vim     :Restart, loaded only when you first use it
@@ -125,7 +127,8 @@ autoload/
 
 Sessions are saved per working directory, so reopening `nvim` in a project
 restores the windows, tabs and tree state you left behind. There is no session
-file to name or manage.
+file to name or manage. Terminal panes running `claude`, `pi` or `omp`
+come back with `--continue`, so each resumes where it left off.
 
 Everything is commented with the *reason* for a setting rather than a
 restatement of it, usually with a `file:line` pointer into the plugin source

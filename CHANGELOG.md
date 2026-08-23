@@ -5,6 +5,40 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-08-24
+
+Buffer tabs are drawn per window now, and `omp` terminals resume across a
+restart.
+
+### Added
+
+- **A per-window buffer strip** (`config/winbar.vim`), drawn in `'winbar'`
+  rather than the tabline, so each split shows its own tabs in the order you
+  opened them instead of every buffer open anywhere. Each tab carries its
+  filetype glyph and closes from its own click target, dropping out of that
+  window's strip while the buffer stays loaded; a modified buffer shows a dot
+  in place of the close glyph. `<Tab>` and `<S-Tab>` cycle the window's own
+  list, and the strips survive both `:Restart` and auto-session.
+- **`omp` joins `claude` and `pi` as a terminal whose session survives a
+  restart.** When the working directory has a saved `omp` session, the restored
+  pane relaunches with `--continue` and picks the conversation back up.
+
+### Changed
+
+- **A plain quit and reopen now resumes terminal sessions, not only
+  `:Restart`.** auto-session rewrites `claude`, `pi` and `omp` panes to
+  `--continue` as it saves, so reopening the layout continues each session
+  instead of starting fresh.
+- **`<Tab>` and `<S-Tab>` walk the current window's buffer list**, not the
+  global one. `:bnext` and `:bprevious` kept pulling in buffers opened in other
+  windows, and each one joined this window's strip.
+- **airline's buffer tabline is off**, replaced by the per-window strip.
+  Running both drew every name twice and cost a screen line, airline's tabline
+  being global.
+- **Indentation inserts spaces instead of a literal tab** (`expandtab`), at the
+  existing width of two.
+- **Line numbers sit four spaces off the text** via `'statuscolumn'`.
+
 ## [0.2.3] - 2026-08-24
 
 An animated cursor, a shape per mode, and two more files out of `init.vim`.
@@ -147,6 +181,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.2.4]: https://github.com/asifshirazi/nvim/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/asifshirazi/nvim/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/asifshirazi/nvim/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/asifshirazi/nvim/compare/v0.2.0...v0.2.1
