@@ -118,6 +118,12 @@ restatement of it, usually with a `file:line` pointer into the plugin source
 that explains why the line exists at all. If a setting here looks strange, the
 comment above it should tell you what went wrong without it.
 
+## Changelog
+
+[CHANGELOG.md](CHANGELOG.md) records what changed in each version. Every
+version is tagged and published on the
+[releases page](https://github.com/asifshirazi/nvim/releases).
+
 ## License
 
 [MIT](LICENSE)
