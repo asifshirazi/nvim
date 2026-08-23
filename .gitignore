@@ -1,3 +1,6 @@
+# vim-plug itself -- installed per-machine into this dir, see README.
+autoload/plug.vim
+
 # Plugins live in stdpath('data')/plugged (see plugins.vim), not here -- listed
 # only so a stray install into the old location never gets committed.
 autoload/plugged/
@@ -12,3 +15,7 @@ tags
 
 # macOS
 .DS_Store
+
+# Claude Code
+CLAUDE.md
+.claude/settings.local.json
