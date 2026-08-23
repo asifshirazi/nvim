@@ -5,6 +5,30 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-23
+
+Fuzzy command-line matching restored, and the Telescope keys grouped under `\t`.
+
+### Added
+
+- **`\ts`**, live grep across the project, and **`\tgs`**, git status in an ivy
+  panel at the bottom of the screen.
+- ripgrep in the README requirements. Telescope hardcodes `rg` for grep, so
+  `\ts` does nothing without it.
+
+### Changed
+
+- **`\t` is now a menu rather than a mapping.** File finding moved to `\tf`,
+  and which-key lists the group on `\t` with a nested `git` group under `\tg`.
+
+### Fixed
+
+- **Lowercase and fuzzy matching on the command line.** `:tele` completes
+  `Telescope` again, and `:tlscp` reaches it too. Command-line completion had
+  been prefix- and case-sensitive since 0.2.0 replaced wilder: the new
+  completion source reads its candidates from `getcompletion()`, which does no
+  fuzzy matching of its own unless `'wildoptions'` says so.
+
 ## [0.2.0] - 2026-08-23
 
 Command line rebuilt on nvim-cmp and noice, and NERDTree config split into its
@@ -72,5 +96,6 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.2.1]: https://github.com/asifshirazi/nvim/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/asifshirazi/nvim/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/asifshirazi/nvim/releases/tag/v0.1.0

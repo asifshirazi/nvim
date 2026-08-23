@@ -43,9 +43,13 @@ nnoremap <silent> <C-q> :call <SID>CloseBuffer()<CR>
 " (plugin/ranger.vim:139). Mapping it again would just shadow its own key.
 " theme=dropdown -- centred box, no preview pane (telescope.txt THEMES).
 " Using the command form rather than a telescope.setup block: with no other
-" telescope config to hold, `pickers = { find_files = { theme = 'dropdown' } }`
-" would be a setup block existing solely for this one line.
-nnoremap <leader>t <cmd>Telescope find_files theme=dropdown<cr>
+" telescope config to hold, a `pickers = { find_files = ..., ... }` block would
+" exist solely to carry the theme for each of these three.
+nnoremap <leader>tf <cmd>Telescope find_files theme=dropdown<cr>
+nnoremap <leader>ts <cmd>Telescope live_grep theme=dropdown<cr>
+" theme=ivy -- bottom panel with a preview (telescope/themes.lua:104), which
+" suits a status list better than a centred box.
+nnoremap <leader>tgs <cmd>Telescope git_status<cr>
 
 " Colorscheme picker (see init.vim section 6 for the theme list)
 nnoremap <silent> <leader>h <cmd>Themery<cr>
@@ -108,13 +112,17 @@ wk.setup {
 -- matching (icons.lua:108 -- and an EMPTY string is truthy in Lua, which is how
 -- these silently rendered blank before).
 wk.add {
-  { '<leader>f', desc = 'Ranger', icon = { icon = '\u{f024b}', color = 'yellow' } },  -- nf-md-folder; mapped by ranger.vim
-  { '<leader>t', desc = 'Telescope (find files)', icon = { icon = '\u{f0b4e}', color = 'blue' } },   -- nf-md-telescope
-  { '<leader>h', desc = 'Themery (colorscheme)', icon = { icon = '\u{f03d8}', color = 'purple' } },  -- nf-md-palette
-  { '<leader>d', desc = 'Development mode', icon = { icon = '\u{f0bcc}', color = 'orange' } },       -- nf-md-view_split_vertical
-  { '<leader>c', desc = 'Terminal', icon = { icon = '\u{f018d}', color = 'red' } },                  -- nf-md-console
-  { '<leader>R', desc = 'Restart (restore everything)', icon = { icon = '\u{f0450}', color = 'green' } }, -- nf-md-refresh
-  { '<leader>b', group = 'buffer', icon = { icon = '\u{f0219}', color = 'cyan' } },   -- nf-md-file_document; mapped by bclose.vim
-  { '<leader>bd', desc = 'Close buffer', icon = { icon = '\u{f0156}', color = 'cyan' } },            -- nf-md-close
+  { '<leader>f', desc = 'Ranger', icon = { icon = '\u{f024b}', color = 'yellow' } },                       -- nf-md-folder; mapped by ranger.vim
+  { '<leader>t', group = 'telescope', icon = { icon = '\u{f0b4e}', color = 'blue' } },                     -- nf-md-telescope
+  { '<leader>tf', desc = 'Find files', icon = { icon = '\u{f021e}', color = 'blue' } },                    -- nf-md-file_find
+  { '<leader>ts', desc = 'Search in files', icon = { icon = '\u{f13b8}', color = 'blue' } },               -- nf-md-text_search
+  { '<leader>tg', group = 'git', icon = { icon = '\u{f02a2}', color = 'orange' } },                        -- nf-md-git
+  { '<leader>tgs', desc = 'Git status', icon = { icon = '\u{f062c}', color = 'orange' } },                 -- nf-md-source_branch
+  { '<leader>h', desc = 'Themery (colorscheme)', icon = { icon = '\u{f03d8}', color = 'purple' } },        -- nf-md-palette
+  { '<leader>d', desc = 'Development mode', icon = { icon = '\u{f0bcc}', color = 'orange' } },             -- nf-md-view_split_vertical
+  { '<leader>c', desc = 'Terminal', icon = { icon = '\u{f018d}', color = 'red' } },                        -- nf-md-console
+  { '<leader>R', desc = 'Restart (restore everything)', icon = { icon = '\u{f0450}', color = 'green' } },  -- nf-md-refresh
+  { '<leader>b', group = 'buffer', icon = { icon = '\u{f0219}', color = 'cyan' } },                        -- nf-md-file_document; mapped by bclose.vim
+  { '<leader>bd', desc = 'Close buffer', icon = { icon = '\u{f0156}', color = 'cyan' } },                  -- nf-md-close
 }
 EOF

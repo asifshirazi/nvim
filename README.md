@@ -16,6 +16,9 @@ and one keystroke.
 - **True colour.** The themes are 24-bit only, so macOS `Terminal.app` will
   render them wrong. iTerm2, Ghostty, WezTerm and Kitty are all fine.
 - Optional: [`ranger`](https://github.com/ranger/ranger), for `\f`
+- Optional: [`ripgrep`](https://github.com/BurntSushi/ripgrep), for `\ts`.
+  Telescope hardcodes `rg` in its default `vimgrep_arguments`, so live grep
+  does nothing without it.
 - Optional: [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
   with the `regex` and `bash` parsers, which noice uses to highlight the
   cmdline. Everything works without it; `:checkhealth noice` will warn.
@@ -56,7 +59,9 @@ Leader is `\` (Vim's default). Press it and pause to get a
 | `<Tab>` / `<S-Tab>` | next / previous buffer |
 | `<C-q>` | close buffer, keeping the window layout |
 | `\f` | Ranger |
-| `\t` | Telescope find files (dropdown, no preview) |
+| `\tf` | Telescope find files (dropdown, no preview) |
+| `\ts` | Telescope live grep, search file contents |
+| `\tgs` | Telescope git status (ivy panel) |
 | `\h` | Themery, the colorscheme picker with live preview |
 | `\d` | development mode: tree left, file centre, `claude` and `pi` terminals right |
 | `\c` | small terminal split below |

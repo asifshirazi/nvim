@@ -30,12 +30,21 @@ set fillchars+=stl:\ ,stlnc:\   " pad status line so it looks continuous
 " set noshowmode                " hide '-- INSERT --' (redundant with status bar)
 
 " ==== 4. Command line & messages (nvim-cmp + noice) =========================
-" Popup completion for :, / and ?. Replaces the built-in wildmenu, which is why
-" the `set wildmenu`/`wildoptions` lines in section 3 stay commented out.
+" Popup completion for :, / and ?, rendered by cmp instead of the built-in
+" wildmenu.
 "
 " cmp is set up for the COMMAND LINE ONLY. The top-level setup deliberately
 " registers no sources, so insert mode gets no popup: there is no LSP here and
 " nothing to complete against.
+
+" cmp-cmdline builds its whole list from a single getcompletion() call
+" (cmp_cmdline/init.lua:136), and that call is prefix-and-case-sensitive
+" unless 'fuzzy' is set. So `:tele` handed cmp nothing to work with, even
+" though cmp's own matcher is fuzzy and prefers a strict case match rather
+" than requiring one (cmp/matcher.lua:26-28,53-57). Fuzzy is not applied to
+" file and directory names, so `:e ini` is unaffected either way.
+set wildoptions+=fuzzy
+
 lua << EOF
 local cmp = require('cmp')
 
