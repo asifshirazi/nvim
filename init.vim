@@ -29,41 +29,72 @@ set number                      " show line numbers
 set fillchars+=stl:\ ,stlnc:\   " pad status line so it looks continuous
 " set noshowmode                " hide '-- INSERT --' (redundant with status bar)
 
-" ==== 4. Command-line completion (wilder) ===================================
-" Fuzzy autocomplete for :, / and ?. Replaces the built-in wildmenu, which is
-" why the `set wildmenu`/`wildoptions` lines in section 3 stay commented out.
-call wilder#setup({
-      \ 'modes': [':', '/', '?'],
-      \ 'next_key': '<Tab>',
-      \ 'previous_key': '<S-Tab>',
-      \ 'accept_key': '<Down>',
-      \ 'reject_key': '<Up>',
-      \ })
+" ==== 4. Command line & messages (nvim-cmp + noice) =========================
+" Popup completion for :, / and ?. Replaces the built-in wildmenu, which is why
+" the `set wildmenu`/`wildoptions` lines in section 3 stay commented out.
+"
+" cmp is set up for the COMMAND LINE ONLY. The top-level setup deliberately
+" registers no sources, so insert mode gets no popup: there is no LSP here and
+" nothing to complete against.
+lua << EOF
+local cmp = require('cmp')
 
-" fzy matching via fzy-lua-native -- no Python remote plugin required
-call wilder#set_option('pipeline', [
-      \   wilder#branch(
-      \     wilder#cmdline_pipeline({
-      \       'fuzzy': 1,
-      \       'fuzzy_filter': wilder#lua_fzy_filter(),
-      \     }),
-      \     wilder#vim_search_pipeline(),
-      \   ),
-      \ ])
+cmp.setup({
+  -- nvim-cmp errors without a snippet expander even when nothing expands
+  -- snippets. Neovim 0.10+ ships one, so this needs no extra plugin.
+  snippet = { expand = function(args) vim.snippet.expand(args.body) end },
+  sources = {},
+})
 
-" glyph-palette defines g:glyph_palette#palette in autoload/glyph_palette.vim,
-" which Vim only loads on the first glyph_palette#* call. wilder reads that
-" variable directly, so force the autoload now -- otherwise it is undefined at
-" popup time and every icon falls back to the uncoloured default.
-runtime autoload/glyph_palette.vim
+-- Search: words from the current buffer.
+cmp.setup.cmdline({ '/', '?' }, {
+  mapping = cmp.mapping.preset.cmdline(),
+  sources = { { name = 'buffer' } },
+})
 
-" Bordered popup with file glyphs (vim-devicons) and a scrollbar
-call wilder#set_option('renderer', wilder#popupmenu_renderer(wilder#popupmenu_border_theme({
-      \ 'border': 'rounded',
-      \ 'highlighter': wilder#basic_highlighter(),
-      \ 'left': [' ', wilder#popupmenu_devicons()],
-      \ 'right': [' ', wilder#popupmenu_scrollbar()],
-      \ })))
+-- Commands: paths first, falling back to command names and their arguments.
+-- cmp.config.sources() takes groups, and a later group is only consulted when
+-- every earlier one comes back empty.
+cmp.setup.cmdline(':', {
+  mapping = cmp.mapping.preset.cmdline(),
+  sources = cmp.config.sources(
+    { { name = 'path' } },
+    { { name = 'cmdline', option = { ignore_cmds = { 'Man', '!' } } } }
+  ),
+})
+
+-- noice takes the cmdline and popupmenu out of the bottom line and renders
+-- them as floats, via Neovim's vim.ui_attach API.
+require('noice').setup({
+  -- Messages stay NATIVE, rendered by Neovim on the message line as usual.
+  -- noice only takes the cmdline and the popupmenu. ui/init.lua:55-63 enables
+  -- each widget independently, so disabling this simply omits ext_messages
+  -- from vim.ui_attach.
+  --
+  -- Why: NERDTree's `m` menu is an echo-driven prompt that redraws every line
+  -- on each keypress inside a getchar() loop (menu_controller.vim:70-79).
+  -- Routed through noice's message pipeline it lands in the wrong place and
+  -- each redraw stacks another copy, because that pipeline is built for
+  -- transient notifications, not a repainting interactive prompt.
+  messages = { enabled = false },
+  -- Hand regular cmdline completions to cmp instead of noice's own nui menu,
+  -- so there is one popup implementation rather than two competing ones.
+  popupmenu = { backend = 'cmp' },
+  lsp = {
+    -- No LSP here, but these also route cmp's documentation window through
+    -- noice's markdown renderer. :checkhealth noice warns if any are missing.
+    override = {
+      ['cmp.entry.get_documentation'] = true,
+      ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
+      ['vim.lsp.util.stylize_markdown'] = true,
+    },
+  },
+  presets = {
+    bottom_search = true,       -- keep / and ? on the classic bottom line
+    command_palette = true,     -- cmdline and its popup sit together, centred
+  },
+})
+EOF
 
 " ==== 5. Statusline & tabline (Airline) =====================================
 let g:airline#extensions#tabline#enabled = 1                " buffer tabs in built-in tabline
@@ -138,56 +169,10 @@ require("themery").setup({
 EOF
 
 " ==== 7. File explorers =====================================================
-" ---- NERDTree (toggled with <C-t>, see keybinds.vim) ----
-let g:NERDTreeWinPos = 'left'            " sidebar side: 'left' or 'right'
-let g:NERDTreeWinSize = 22               " sidebar width in columns
-let g:NERDTreeShowHidden = 1             " show dotfiles by default (toggle with I)
-let g:NERDTreeMinimalUI = 1              " hide the '? for help' header
-let g:NERDTreeShowLineNumbers = 0        " no line numbers in the tree
-let g:NERDTreeAutoDeleteBuffer = 1       " delete the buffer of a file removed in the tree
-let g:NERDTreeQuitOnOpen = 0             " set to 1 to auto-close the tree after opening a file
-" Octicon chevrons, straight from the Nerd Font -- no icon plugin involved.
-" DOUBLE quotes are required: in single quotes Vim takes \u literally and you
-" get the six characters \uF460 on screen. Single character each
-" (NERDTree.txt:1281).
-let g:NERDTreeDirArrowExpandable = ""   " closed directory (nf-oct-chevron_right)
-let g:NERDTreeDirArrowCollapsible = ""  " open directory   (nf-oct-chevron_down)
-let g:NERDTreeLimitedSyntax = 1          " colour only common extensions -- keeps large trees fast
-"let g:NERDTreeChDirMode = 2             " uncomment to :cd into the tree root as you browse
-
-" ---- NERDTree icons (vim-devicons) ----
-" The icon is rendered as a NERDTree flag: '[ icon ]'. The brackets are concealed
-" (vim-devicons conceals them by default); these two control the
-" padding *inside* them -- set either to '' to tighten the spacing.
-let g:WebDevIconsNerdTreeBeforeGlyphPadding = ''  " gap between arrow and icon
-let g:WebDevIconsNerdTreeAfterGlyphPadding = ' '   " gap between icon and filename
-let g:WebDevIconsUnicodeDecorateFolderNodes = 1  " uncomment for icons on directories too
-let g:DevIconsEnableFoldersOpenClose = 1         " ...with distinct open/closed folder glyphs
-let g:NERDTreeHighlightFolders = 1
-
-" NERDTree links its own name groups to Directory/Identifier with `hi def link`
-" (syntax/nerdtree.vim:84,66). `def` means default, so an explicit link wins.
-" Applied twice on purpose: once now, because section 3's `colorscheme` has
-" already run and the autocmd below would never fire for it; and again on every
-" ColorScheme, because switching theme via <leader>h wipes explicit highlights.
-" The arrows are NOT affected -- they link to Directory, not to NERDTreeDir.
-function! s:NeutralTreeNames() abort
-  hi link NERDTreeDir Normal
-  hi link NERDTreeDirSlash Normal
-endfunction
-call s:NeutralTreeNames()
-augroup nerdtree_neutral_names
-  autocmd!
-  autocmd ColorScheme * call s:NeutralTreeNames()
-augroup END
-
-" Don't let devicons force its default green/white symbol colours
-let g:WebDevIconsDisableDefaultFolderSymbolColorFromNERDTreeDir = 0
-let g:WebDevIconsDisableDefaultFileSymbolColorFromNERDTreeFile = 0
-
-" Close Vim if NERDTree is the only window left (a regular :NERDTree is a
-" 'window'-type tree; 'tab'-type is the pinned-in-tab variant)
-autocmd BufEnter * if winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isWinTree() | quit | endif
+" NERDTree, its devicons glyphs and the neutral-name highlights all live in
+" nerdtree.vim. Sourced here rather than at the top because it applies
+" highlights immediately and needs the colorscheme already set.
+source ~/.config/nvim/nerdtree.vim
 
 " ==== 8. Auto-detect external file changes ==================================
 " Implementation lives in autoload/autoreload.vim (autocmds + a polling timer,

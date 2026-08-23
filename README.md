@@ -4,8 +4,9 @@ My Neovim configuration. Still Vimscript, still
 [vim-plug](https://github.com/junegunn/vim-plug), deliberately no LSP.
 
 It opens instantly and gets out of the way: a NERDTree sidebar, fuzzy finding
-over files and the command line, sessions that remember your layout per project,
-and 43 colorschemes you can flip through with live preview and one keystroke.
+over files, popup completion on the command line, sessions that remember your
+layout per project, and 43 colorschemes you can flip through with live preview
+and one keystroke.
 
 ## Requirements
 
@@ -15,6 +16,9 @@ and 43 colorschemes you can flip through with live preview and one keystroke.
 - **True colour.** The themes are 24-bit only, so macOS `Terminal.app` will
   render them wrong. iTerm2, Ghostty, WezTerm and Kitty are all fine.
 - Optional: [`ranger`](https://github.com/ranger/ranger), for `\f`
+- Optional: [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
+  with the `regex` and `bash` parsers, which noice uses to highlight the
+  cmdline. Everything works without it; `:checkhealth noice` will warn.
 
 ## Install
 
@@ -32,16 +36,6 @@ vendored in this repo.
 curl -fLo ~/.config/nvim/autoload/plug.vim --create-dirs \
     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 ```
-
-<details>
-<summary>Windows (PowerShell)</summary>
-
-```powershell
-iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim |`
-    ni "$env:LOCALAPPDATA/nvim/autoload/plug.vim" -Force
-```
-
-</details>
 
 **3. Install the plugins.**
 
@@ -98,10 +92,10 @@ The statusline follows along automatically wherever the theme ships a matching
 |---|---|
 | File explorer | nerdtree, nerdtree-visual-selection, ranger.vim |
 | Navigation | telescope, bclose, which-key |
-| Command line | wilder (fuzzy `:` `/` `?` with an icon popup) |
+| Command line | noice (floating cmdline) + nvim-cmp sources |
 | Sessions | auto-session, plus `:Restart` |
 | Statusline | vim-airline |
-| Icons | vim-devicons, nerdtree-syntax-highlight, glyph-palette |
+| Icons | vim-devicons, nerdtree-syntax-highlight |
 
 ## Layout
 
@@ -109,6 +103,7 @@ The statusline follows along automatically wherever the theme ships a matching
 init.vim        settings, plugin config, in numbered sections
 plugins.vim     the plug#begin/end block
 keybinds.vim    mappings + which-key
+nerdtree.vim    NERDTree options, icons and highlights
 autoload/
   autoreload.vim  reload files changed outside nvim, even mid-edit
   restart.vim     :Restart, saves layout, re-execs, restores
