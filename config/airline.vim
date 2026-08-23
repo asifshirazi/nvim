@@ -1,11 +1,14 @@
-" vim-airline -- the statusline and the buffer tabline.
+" vim-airline -- the statusline.
 "
 " Sourced from init.vim section 5. Position is not load-bearing: these are all
 " g: variables, read when airline's own plugin file is sourced, which happens
 " after init.vim finishes either way.
 
-let g:airline#extensions#tabline#enabled = 1                " buffer tabs in built-in tabline
-let g:airline#extensions#tabline#formatter = 'unique_tail'  " filename only (path shown only on name clashes)
+" Off: the buffer list is drawn per window by config/winbar.vim instead, and
+" airline's version is global, so both at once shows the same names twice and
+" costs a screen line to do it. The formatter went with it, having nothing left
+" to format.
+let g:airline#extensions#tabline#enabled = 0
 let g:airline_powerline_fonts = 1                           " powerline glyphs (needs Nerd font)
 " Airline enables its xkblayout (keyboard-layout) extension for any nvim, and
 " its status() then calls luaeval('require"ime".current()') -- a module we

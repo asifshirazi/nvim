@@ -10,9 +10,9 @@
 " from scratch -- rewrite their commands to resume the previous session instead.
 
 let s:session_file = stdpath('state') . '/restart-session.vim'
-let s:resumable = ['claude', 'pi']   " CLIs whose sessions survive via --continue
+let s:resumable = ['claude', 'pi', 'omp']   " CLIs whose sessions survive via --continue
 
-" Both CLIs store sessions per working directory, under a mangled directory
+" All three CLIs store sessions per working directory, under a mangled directory
 " name. Passing --continue with no saved session makes them abort, so only add
 " the flag when one actually exists -- worst case you get a fresh session,
 " which is just the normal behaviour.
@@ -22,6 +22,11 @@ function! s:has_session(cmd, cwd) abort
     let l:dir = expand('~/.claude/projects/') . substitute(l:cwd, '[/.]', '-', 'g')
   elseif a:cmd ==# 'pi'        " ~/.pi/agent/sessions/-<cwd+/ with / as ->-
     let l:dir = expand('~/.pi/agent/sessions/-') . substitute(l:cwd . '/', '/', '-', 'g') . '-'
+  elseif a:cmd ==# 'omp'       " ~/.omp/agent/sessions/<$HOME-relative cwd, / as ->
+    let l:home = substitute(expand('~'), '/$', '', '')
+    let l:rel = (l:cwd ==# l:home || stridx(l:cwd, l:home . '/') == 0)
+          \ ? l:cwd[len(l:home):] : l:cwd
+    let l:dir = expand('~/.omp/agent/sessions/') . substitute(l:rel, '/', '-', 'g')
   else
     return 0
   endif
@@ -108,20 +113,40 @@ function! s:terminal_overrides() abort
   return l:map
 endfunction
 
-" Write the session file, with the two fix-ups above applied.
-function! restart#save() abort
-  execute 'mksession!' fnameescape(s:session_file)
+" Rewrite resumable-CLI terminal commands in SESSION LINES to add --continue
+" wherever a saved session exists, with both fix-ups: the regex handles panes
+" launched as the CLI directly, s:terminal_overrides the shells running one as
+" a child. Shared by restart#save() and the auto-session post_save hook
+" (init.vim section 9), so both restore paths resume the same sessions. The
+" \@! guard means a name already ending in --continue is left alone, so
+" re-saving a restored layout never stacks the flag.
+function! s:resume_rewrite(lines) abort
   " Terminal buffers are stored as  term://{cwd}//{pid}:{cmd}\ {args}
   let l:pattern = 'term://\(.\{-}\)//\d\+:\(' . join(s:resumable, '\|') . '\)'
         \ . '\%(\\ --continue\)\@!\ze\%(\\ \|\>\)'
-  let l:lines = readfile(s:session_file)
-  call map(l:lines, {_, l -> substitute(l, l:pattern,
+  call map(a:lines, {_, l -> substitute(l, l:pattern,
         \ '\=submatch(0) . (s:has_session(submatch(2), submatch(1)) ? "\\ --continue" : "")', 'g')})
-  " Shell panes running claude/pi as a child process (see s:terminal_overrides)
+  " Shell panes running a resumable CLI as a child (see s:terminal_overrides)
   for [l:name, l:replacement] in items(s:terminal_overrides())
     let l:from = escape(substitute(l:name, ' ', '\\ ', 'g'), '\')
-    call map(l:lines, {_, l -> substitute(l, '\V' . l:from, escape(l:replacement, '\&~'), 'g')})
+    call map(a:lines, {_, l -> substitute(l, '\V' . l:from, escape(l:replacement, '\&~'), 'g')})
   endfor
+  return a:lines
+endfunction
+
+" Patch a just-written session file in place. auto-session's post_save hook
+" passes it v:this_session, which mksession sets to the file it wrote.
+function! restart#resume_patch(path) abort
+  if empty(a:path) || !filereadable(a:path)
+    return
+  endif
+  call writefile(s:resume_rewrite(readfile(a:path)), a:path)
+endfunction
+
+" Write the session file, with the two fix-ups above applied.
+function! restart#save() abort
+  execute 'mksession!' fnameescape(s:session_file)
+  let l:lines = s:resume_rewrite(readfile(s:session_file))
   " Reopen the folders that were expanded (see restart#open_dirs above).
   " Emitted whenever a tree was open -- even with nothing expanded -- because
   " the block also replaces the stale restored tree (see below).
@@ -210,6 +235,10 @@ function! restart#save() abort
         \ 'endfor',
         \ 'unlet! s:b',
         \ ]
+  " Per-window buffer strips (config/winbar.vim). Appended last so the lists
+  " resolve against the final buffer set: the NERDTree block above wipes the
+  " stale tree buffer and the block above that drops the empty unnamed ones.
+  let l:lines += WinbarSessionLines()
   call writefile(l:lines, s:session_file)
   return s:session_file
 endfunction
@@ -218,14 +247,14 @@ endfunction
 " arguments -- exactly what :restart does. Its restore would run first and ours
 " on top. The `silent only` / `silent tabonly` at the head of a session file
 " hides the duplicated *windows*, but not the buffers, and it does not kill
-" terminal jobs: you would end up with two claude and two pi processes, one
-" pair invisible but alive. Drop a sentinel that the pre_restore hook in
+" terminal jobs: you would end up with two claude, two pi and two omp
+" processes, one set alive but hidden. Drop a sentinel the pre_restore hook in
 " init.vim checks, so auto-session stands down for this one restart.
 let s:skip_flag = stdpath('state') . '/restart-skip-autosession'
 
 function! restart#run() abort
   echomsg 'restart: restoring everything'
-        \ . ' (layout, NERDTree folders, claude/pi sessions)'
+        \ . ' (layout, NERDTree folders, claude/pi/omp sessions)'
   call restart#save()
   call writefile([localtime()], s:skip_flag)
   execute 'restart source' fnameescape(s:session_file)

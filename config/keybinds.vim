@@ -4,10 +4,13 @@
 " Toggle NERDTree sidebar with Ctrl+t
 nnoremap <silent> <C-t> :NERDTreeToggle<CR>
 
-" Switch to the NEXT tab with Tab 
-nnoremap <Tab> :bnext<CR>
-" Switch to the PREVIOUS tab with Shift+Tab
-nnoremap <S-Tab> :bprevious<CR>
+" Switch to the NEXT tab with Tab, the PREVIOUS one with Shift+Tab. These walk
+" the CURRENT WINDOW's own buffer list (config/winbar.vim), not the global one,
+" so they match the strip that window is showing. Plain :bnext would keep
+" pulling in buffers opened elsewhere, and every one it pulled in would join
+" this window's strip.
+nnoremap <silent> <Tab> :call WinbarNext()<CR>
+nnoremap <silent> <S-Tab> :call WinbarPrev()<CR>
 
 " Alternatively, use Ctrl + q to close a tab (buffer) without closing the window
 " Plain :bdelete closes the window when it's the last listed buffer, which then
@@ -102,8 +105,8 @@ wk.setup {
       -- this config's own commands
       { pattern = 'nerdtree', icon = '󰙅', color = 'green' },
       { pattern = 'closebuffer', icon = '󰅖', color = 'red' },
-      { pattern = 'bnext', icon = '󰮱', color = 'cyan' },
-      { pattern = 'bprevious', icon = '󰮲', color = 'cyan' },
+      { pattern = 'winbarnext', icon = '󰮱', color = 'cyan' },
+      { pattern = 'winbarprev', icon = '󰮲', color = 'cyan' },
     },
   },
 }

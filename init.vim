@@ -19,6 +19,7 @@ set updatetime=1000          " faster CursorHold -> checktime, so autoread doesn
 " ---- Indentation ----
 set tabstop=2                " visual width of a <Tab>
 set shiftwidth=2             " spaces per auto-indent step
+set expandtab                " insert spaces, never a literal <Tab>
 
 " ==== 3. Appearance =========================================================
 " Default colorscheme. Themery (config/themery.vim) overrides this on every start
@@ -28,6 +29,7 @@ set shiftwidth=2             " spaces per auto-indent step
 " nord sets &background itself, so no `set background` is needed.
 colorscheme nord
 set number                      " show line numbers
+let &statuscolumn = '%s%=%l    '  " 4 spaces between number and text
 set fillchars+=stl:\ ,stlnc:\   " pad status line so it looks continuous
 " set noshowmode                " hide '-- INSERT --' (redundant with status bar)
 
@@ -108,9 +110,11 @@ require('noice').setup({
 })
 EOF
 
-" ==== 5. Statusline & tabline (Airline) =====================================
-" Options live in config/airline.vim.
+" ==== 5. Statusline & winbar ================================================
+" Airline's options live in config/airline.vim. Its tabline extension is off:
+" the buffer list is drawn per window instead, by config/winbar.vim.
 source ~/.config/nvim/config/airline.vim
+source ~/.config/nvim/config/winbar.vim
 
 " ==== 6. Colorscheme switcher (themery) =====================================
 " The picker on \h and the list it offers live in config/themery.vim. Sourced
@@ -145,12 +149,24 @@ require('auto-session').setup {
   -- but never registers it with NERDTree, so <C-t> would open a second tree.
   -- Closing the tree before saving (the plugin's own recommendation) avoids it.
   pre_save_cmds = { 'tabdo NERDTreeClose' },
+  -- mksession cannot save the per-window buffer strips (config/winbar.vim):
+  -- 'sessionoptions' has no word for window-local variables. These lines go to
+  -- the session's companion x.vim, which Vim sources once the layout is back
+  -- (:h :mksession, step 10). Returning an empty list deletes any stale file.
+  save_extra_cmds = { function() return vim.fn.WinbarSessionLines() end },
+  -- After each save, rewrite resumable-CLI terminal commands to add --continue,
+  -- the same fix-up :Restart applies (autoload/restart.vim): without it a plain
+  -- quit and reopen relaunches claude/pi/omp fresh instead of resuming. mks!
+  -- above has just set v:this_session to the file it wrote.
+  post_save_cmds = {
+    function() vim.fn['restart#resume_patch'](vim.v.this_session) end,
+  },
   -- Don't restore a session for a bare home/root directory
   suppressed_dirs = { '~/', '~/Downloads', '/' },
   -- :Restart (autoload/restart.vim) leaves a sentinel before re-execing nvim.
   -- :restart starts with no file args, which is our auto-restore trigger, so
   -- without this BOTH sessions would load and every terminal would be spawned
-  -- twice (two claude, two pi -- one pair hidden but still running).
+  -- twice (two each of claude, pi and omp -- one set hidden but still running).
   pre_restore_cmds = {
     function()
       local flag = vim.fn.stdpath('state') .. '/restart-skip-autosession'
