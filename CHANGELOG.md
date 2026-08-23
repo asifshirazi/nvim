@@ -5,6 +5,32 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-08-24
+
+An animated cursor, a shape per mode, and two more files out of `init.vim`.
+
+### Added
+
+- **[smear-cursor](https://github.com/sphamba/smear-cursor.nvim)**, which
+  animates the cursor gliding between positions instead of jumping. Toggle it
+  at runtime with `:SmearCursorToggle`.
+
+### Changed
+
+- **The cursor now takes a shape per mode**: a block wherever it sits on a
+  character, a bar in the insert-like modes where it sits between them, and an
+  underline while replacing. A bar everywhere reads wrong at end of line, since
+  `<End>` stops on the last character rather than past it, so the bar lands to
+  the left of it.
+- **`airline.vim` and `themery.vim` moved into `config/`**, leaving `init.vim`
+  sections 5 and 6 as a source line each.
+
+### Fixed
+
+- **`\tgs` opens git status in the ivy panel its own comment describes.** The
+  argument was lost before the mapping was first committed, so the picker had
+  always been opening with the default layout.
+
 ## [0.2.2] - 2026-08-24
 
 NERDTree's node menu is a Telescope picker now, and the sourced files moved into
@@ -121,6 +147,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.2.3]: https://github.com/asifshirazi/nvim/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/asifshirazi/nvim/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/asifshirazi/nvim/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/asifshirazi/nvim/compare/v0.1.0...v0.2.0
