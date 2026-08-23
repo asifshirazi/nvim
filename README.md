@@ -105,6 +105,7 @@ The statusline follows along automatically wherever the theme ships a matching
 | Sessions | auto-session, plus `:Restart` |
 | Statusline | vim-airline |
 | Icons | vim-devicons, nerdtree-syntax-highlight |
+| Cursor | smear-cursor (animated cursor trail) |
 
 ## Layout
 
@@ -115,6 +116,8 @@ config/
   keybinds.vim    mappings + which-key
   nerdtree.vim    NERDTree options, icons and highlights
   telescope.vim   NERDTree's `m` menu as a Telescope picker
+  themery.vim     the colorscheme switcher and its discovered list
+  airline.vim     statusline and buffer tabline options
   autoreload.vim  reload files changed outside nvim, even mid-edit
 autoload/
   restart.vim     :Restart, loaded only when you first use it

@@ -10,6 +10,7 @@ call plug#begin()
   Plug 'nvim-lua/plenary.nvim'   " telescope dependency
   Plug 'rbgrouleff/bclose.vim'
   Plug 'folke/which-key.nvim'    " key hints; supports explicit menu ordering
+  Plug 'sphamba/smear-cursor.nvim'  " animated cursor trail; opts in init.vim section 12
 
   " ---- Command line & messages ----
   Plug 'hrsh7th/nvim-cmp'        " completion engine; configured cmdline-only here
@@ -28,7 +29,7 @@ call plug#begin()
   Plug 'vim-airline/vim-airline-themes'
 
   " ---- Colorschemes ----
-  Plug 'zaldih/themery.nvim'                      " :Themery picker -- see init.vim section 6
+  Plug 'zaldih/themery.nvim'                      " :Themery picker -- see config/themery.vim
   Plug 'projekt0n/github-nvim-theme'              " 11 github_* schemes + airline themes
   Plug 'nordtheme/vim', { 'as': 'nord' }          " `nord` + airline theme; 'as' avoids plugged/vim
   Plug 'vague-theme/vague.nvim'                   " `vague`

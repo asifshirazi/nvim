@@ -49,9 +49,9 @@ nnoremap <leader>tf <cmd>Telescope find_files theme=dropdown<cr>
 nnoremap <leader>ts <cmd>Telescope live_grep theme=dropdown<cr>
 " theme=ivy -- bottom panel with a preview (telescope/themes.lua:104), which
 " suits a status list better than a centred box.
-nnoremap <leader>tgs <cmd>Telescope git_status<cr>
+nnoremap <leader>tgs <cmd>Telescope git_status theme=ivy<cr>
 
-" Colorscheme picker (see init.vim section 6 for the theme list)
+" Colorscheme picker (see config/themery.vim for the theme list)
 nnoremap <silent> <leader>h <cmd>Themery<cr>
 
 " Dev layout: NERDTree left, file middle, claude top-right, pi bottom-right

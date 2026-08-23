@@ -6,13 +6,14 @@ source ~/.config/nvim/config/keybinds.vim
 " ==== 2. Basic settings =====================================================
 syntax enable                " syntax highlighting for all filetypes
 "set guifont=JetBrains\ Mono:h12
-"set guicursor=n-vvc:block,i-ci-ve:ver25,r-cr:hor20,o:hor50
+" Block where the cursor sits on a character, bar where it sits between them.
+set guicursor=n-v-c:block,i-ci-ve:ver25,r-cr:hor20,o:hor50
 set encoding=utf-8           " use UTF-8 file encoding
 set clipboard+=unnamedplus   " use system clipboard directly (register '+')
 set mouse=a                  " mouse in all modes (click cursor, resize splits)
 set mousescroll=ver:1,hor:0
 set whichwrap+=<,>,h,l       " arrows cross line edges to next/prev line
-set timeoutlen=250           " snappy key-repeat/escape, less lag
+set timeoutlen=300           " snappy key-repeat/escape, less lag
 set updatetime=1000          " faster CursorHold -> checktime, so autoread doesn't wait for focus
 
 " ---- Indentation ----
@@ -20,9 +21,10 @@ set tabstop=2                " visual width of a <Tab>
 set shiftwidth=2             " spaces per auto-indent step
 
 " ==== 3. Appearance =========================================================
-" Default colorscheme. Themery (section 6) overrides this on every start once a
-" theme has been picked, so this is really the fallback for a fresh machine or a
-" deleted stdpath('data')/themery/state.json. It must stay ABOVE section 6.
+" Default colorscheme. Themery (config/themery.vim) overrides this on every start
+" once a theme has been picked, so this is really the fallback for a fresh machine
+" or a deleted stdpath('data')/themery/state.json. It must stay ABOVE section 6,
+" which is where that file is sourced.
 " nord sets &background itself, so no `set background` is needed.
 colorscheme nord
 set number                      " show line numbers
@@ -107,76 +109,14 @@ require('noice').setup({
 EOF
 
 " ==== 5. Statusline & tabline (Airline) =====================================
-let g:airline#extensions#tabline#enabled = 1                " buffer tabs in built-in tabline
-let g:airline#extensions#tabline#formatter = 'unique_tail'  " filename only (path shown only on name clashes)
-let g:airline_powerline_fonts = 1                           " powerline glyphs (needs Nerd font)
-" Airline enables its xkblayout (keyboard-layout) extension for any nvim, and
-" its status() then calls luaeval('require"ime".current()') -- a module we
-" don't have, which throws E5108 on redraw. Nothing here uses it.
-let g:airline#extensions#xkblayout#enabled = 0
-" Commented on purpose: setting this at all disables airline's colorscheme
-" matching (plugin/airline.vim:24). Uncomment only to pin one theme.
-"let g:airline_theme = 'onedark'
+" Options live in config/airline.vim.
+source ~/.config/nvim/config/airline.vim
 
 " ==== 6. Colorscheme switcher (themery) =====================================
-" :Themery opens a picker over the list below; j/k moves (with live preview),
-" <CR> applies + persists, q/<Esc> cancels. The choice is stored in
-" stdpath('data')/themery/state.json -- this config is never rewritten.
-"
-" The only thing here that sets a colorscheme -- section 3's `colorscheme` and
-" `set background` are commented out. Re-enabling either means keeping it ABOVE
-" this section, or it clobbers the saved theme on every start.
-"
-" Airline follows along by matching g:colors_name (see section 5). The 11
-" github_* schemes and nord each ship a same-named airline theme, so those pair
-" exactly; the built-in schemes have none and resolve via g:airline_theme_map.
-"
-" The list is discovered at startup, not hand-written: themery has NO
-" auto-discovery of its own (constants.lua:4 defaults themes to {}, and omitting
-" it yields an EMPTY menu), so getcompletion() supplies the same set :colo
-" completes. Plain strings are accepted -- config.lua:58 normalizes each into
-" { name = <s>, colorscheme = <s> }.
-lua << EOF
-require("themery").setup({
-  livePreview = true,
-  -- Every switch starts from background=dark, so no scheme can strand the
-  -- setting on light. The light-first schemes still in the auto-list (shine,
-  -- peachpuff, delek) therefore render in their dark variant; to rescue one,
-  -- add it to the exceptions below the same way `morning` is handled.
-  -- The github_light* schemes need no exception: they set &background
-  -- themselves, after this hook runs.
-  globalBefore = [[ vim.opt.background = "dark" ]],
-  -- Discovered list, with hand-written exceptions in front. An exception is
-  -- filtered out of the auto-list so it appears once, not twice.
-  themes = (function()
-    local exceptions = {
-      { name = 'morning (light)', colorscheme = 'morning',
-        before = [[ vim.opt.background = "light" ]] },
-      -- modus_operandi renders LIGHT but never sets &background itself.
-      { name = 'modus_operandi (light)', colorscheme = 'modus_operandi',
-        before = [[ vim.opt.background = "light" ]] },
-    }
-    -- Bare `modus` is excluded: it caches the last variant applied, so after
-    -- visiting modus_vivendi it renders DARK while claiming to be the light
-    -- one. modus_operandi/modus_vivendi are deterministic and cover both modes.
-    local excluded = { modus = true }
-    -- Substituted IN PLACE, not prepended: an exception keeps the alphabetical
-    -- slot of the scheme it overrides, so related entries (modus, modus_operandi,
-    -- modus_vivendi) stay adjacent instead of being split across the list.
-    local byScheme = {}
-    for _, e in ipairs(exceptions) do byScheme[e.colorscheme] = e end
-
-    local list = {}
-    for _, name in ipairs(vim.fn.getcompletion('', 'color')) do
-      if not excluded[name] then
-        -- string shorthand; config.lua:58 normalizes it into a table
-        table.insert(list, byScheme[name] or name)
-      end
-    end
-    return list
-  end)(),
-})
-EOF
+" The picker on \h and the list it offers live in config/themery.vim. Sourced
+" here rather than at the top because it applies the saved theme immediately
+" and so must run after section 3's `colorscheme`.
+source ~/.config/nvim/config/themery.vim
 
 " ==== 7. File explorers =====================================================
 " NERDTree, its devicons glyphs and the neutral-name highlights all live in
@@ -242,3 +182,20 @@ cnoreabbrev <expr> restart (getcmdtype() ==# ':' && getcmdline() ==# 'restart') 
 
 " ==== 11. Providers ==========================================================
 let g:loaded_perl_provider = 0
+
+" ==== 12. Cursor smear (smear-cursor.nvim) ==================================
+lua << EOF
+require('smear_cursor').setup({
+  smear_between_buffers = true,
+  smear_insert_mode = true,
+  stiffness = 0.8,
+  trailing_stiffness = 0.6,
+  damping = 0.95,
+  matrix_pixel_threshold = 0.5,
+  stiffness_insert_mode = 0.7,
+  trailing_stiffness_insert_mode = 0.7,
+  damping_insert_mode = 0.95,
+  distance_stop_animating = 0.5,
+  time_interval = 7,
+})
+EOF
