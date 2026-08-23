@@ -75,17 +75,18 @@ cmp.setup.cmdline(':', {
 -- noice takes the cmdline and popupmenu out of the bottom line and renders
 -- them as floats, via Neovim's vim.ui_attach API.
 require('noice').setup({
-  -- Messages stay NATIVE, rendered by Neovim on the message line as usual.
-  -- noice only takes the cmdline and the popupmenu. ui/init.lua:55-63 enables
-  -- each widget independently, so disabling this simply omits ext_messages
-  -- from vim.ui_attach.
+  -- Messages are noice's (its default), so NERDTree's echomsg confirmations
+  -- surface as notifications rather than on the bottom line.
   --
-  -- Why: NERDTree's `m` menu is an echo-driven prompt that redraws every line
-  -- on each keypress inside a getchar() loop (menu_controller.vim:70-79).
-  -- Routed through noice's message pipeline it lands in the wrong place and
-  -- each redraw stacks another copy, because that pipeline is built for
-  -- transient notifications, not a repainting interactive prompt.
-  messages = { enabled = false },
+  -- This was `enabled = false` for a while. NERDTree's `m` menu is an
+  -- echo-driven prompt that redraws every line on each keypress inside a
+  -- getchar() loop (menu_controller.vim:70-79); through noice's message
+  -- pipeline it landed in the wrong place and stacked a fresh copy per
+  -- keystroke, that pipeline being built for transient notifications rather
+  -- than a repainting interactive prompt. `m` is a Telescope picker now and
+  -- never enters that loop. The original menu is still on `M`, so
+  -- NERDTreeMenuNative() in config/telescope.vim stands noice down for the
+  -- length of the loop instead of the whole session.
   -- Hand regular cmdline completions to cmp instead of noice's own nui menu,
   -- so there is one popup implementation rather than two competing ones.
   popupmenu = { backend = 'cmp' },

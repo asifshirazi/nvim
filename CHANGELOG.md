@@ -5,6 +5,31 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-08-24
+
+NERDTree's node menu is a Telescope picker now, and the sourced files moved into
+`config/`.
+
+### Added
+
+- **NERDTree's `m` menu as a Telescope picker**, opening at the cursor and sized
+  to its contents, so the eleven actions can be filtered by typing instead of
+  hunting for the shortcut letter. The original menu stays on `M`.
+
+### Changed
+
+- **Messages belong to noice again.** NERDTree confirmations, such as the path
+  copied to your clipboard, arrive as notifications rather than on the bottom
+  line. They had been left native because the old `m` menu repaints on every
+  keypress and stacked a notification per keystroke; noice now stands down for
+  the length of that menu alone, which only `M` still reaches.
+- **`plugins.vim`, `keybinds.vim`, `nerdtree.vim`, `telescope.vim` and
+  `autoreload.vim` moved into `config/`.** Only `restart.vim` remains in
+  `autoload/`, being the one file genuinely loaded on demand. Note that
+  autoreload's guard against stacking polling timers depended on being
+  autoloaded, since Vim sources such a file once per session; the timer id lives
+  in `g:autoreload_timer` now so re-sourcing `init.vim` still cannot stack them.
+
 ## [0.2.1] - 2026-08-23
 
 Fuzzy command-line matching restored, and the Telescope keys grouped under `\t`.
@@ -96,6 +121,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.2.2]: https://github.com/asifshirazi/nvim/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/asifshirazi/nvim/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/asifshirazi/nvim/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/asifshirazi/nvim/releases/tag/v0.1.0

@@ -26,9 +26,24 @@ let s:items = []
 
 " Verbatim what NERDTree binds to `m` by default (ui_glue.vim:680-683). Copied
 " rather than called because the original is script-local to ui_glue.vim.
+"
+" noice is stood down around it. showMenu() repaints its whole prompt on every
+" keypress inside a getchar() loop, and noice's message pipeline renders each
+" repaint as another notification. Scoped to this call rather than the session
+" (noice/init.lua:39,55), so ordinary messages stay in noice's UI.
 function! NERDTreeMenuNative(node) abort
-  let l:mc = g:NERDTreeMenuController.New(g:NERDTreeMenuItem.AllEnabled())
-  call l:mc.showMenu()
+  let l:noiced = luaeval('package.loaded["noice"] ~= nil and require("noice.config").is_running()')
+  if l:noiced
+    lua require('noice').disable()
+  endif
+  try
+    let l:mc = g:NERDTreeMenuController.New(g:NERDTreeMenuItem.AllEnabled())
+    call l:mc.showMenu()
+  finally
+    if l:noiced
+      lua require('noice').enable()
+    endif
+  endtry
 endfunction
 
 " Called back from Lua once the picker has closed and focus is in the tree.
@@ -69,6 +84,15 @@ if ok then
   local action_state = require('telescope.actions.state')
   local themes = require('telescope.themes')
 
+  -- NERDTree spells the shortcut into the label itself: "(a)dd a childnode".
+  -- Pull the parens off and start with a capital, so the row reads as a plain
+  -- sentence. The shortcut is not displayed, but it stays in the entry's
+  -- ordinal below, so typing it still filters to that item.
+  local function pretty(text)
+    local label = text:gsub('%((%a)%)', '%1')
+    return (label:gsub('^%l', string.upper))
+  end
+
   function _G.NERDTreeMenuPicker(entries)
     -- Every menu callback resolves its target through GetSelected(), which
     -- reads b:NERDTree and line('.') of the CURRENT window
@@ -79,13 +103,33 @@ if ok then
     -- (menu_controller.vim:45,52-54).
     local tree_win = vim.api.nvim_get_current_win()
 
-    pickers.new(themes.get_cursor({}), {
+    local rows, widest = {}, 0
+    for _, e in ipairs(entries) do
+      local label = pretty(e.text)
+      widest = math.max(widest, vim.fn.strdisplaywidth(label))
+      table.insert(rows, { idx = e.idx, key = e.shortcut, label = label })
+    end
+
+    -- get_cursor hardcodes width 80 and height 9 (themes.lua:80-83), which is
+    -- far wider than any label here and shows only 5 of the 11 items. Size to
+    -- the content instead, clamped so an oddly long entry cannot blow it out.
+    -- The +8 covers the selection caret, borders and the scrollbar; the +4
+    -- covers the prompt row and the horizontal borders.
+    local width = math.min(math.max(widest + 8, 40), 80)
+    local height = math.min(math.max(#rows + 4, 9), math.floor(vim.o.lines * 0.8))
+
+    pickers.new(themes.get_cursor({
+      layout_config = { width = width, height = height },
+    }), {
       prompt_title = 'NERDTree',
       finder = finders.new_table({
-        results = entries,
-        entry_maker = function(e)
-          local display = e.shortcut ~= '' and ('[' .. e.shortcut .. ']  ' .. e.text) or e.text
-          return { value = e, display = display, ordinal = e.text .. ' ' .. e.shortcut }
+        results = rows,
+        entry_maker = function(row)
+          return {
+            value = row,
+            ordinal = row.label .. ' ' .. row.key,
+            display = row.label,
+          }
         end,
       }),
       sorter = conf.generic_sorter({}),
