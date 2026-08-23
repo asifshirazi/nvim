@@ -27,6 +27,7 @@ call plug#begin()
   " ---- Statusline ----
   Plug 'vim-airline/vim-airline'
   Plug 'vim-airline/vim-airline-themes'
+  Plug 'tpope/vim-fugitive'      " git wrapper; airline reads the branch from it (FugitiveHead)
 
   " ---- Colorschemes ----
   Plug 'zaldih/themery.nvim'                      " :Themery picker -- see config/themery.vim
