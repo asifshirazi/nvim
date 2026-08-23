@@ -1,9 +1,9 @@
 " ============================================================================
 " Auto-detect external file changes
 " ============================================================================
-" Unlike autoload/restart.vim this is not lazy -- init.vim calls
-" autoreload#enable() at startup, because the timer has to be running before
-" anything external touches a file. Kept here to stay out of init.vim.
+" This lived in autoload/ once, but got none of the benefit: init.vim calls
+" AutoreloadEnable() at startup anyway, because the timer has to be running
+" before anything external touches a file. Nothing here is ever deferred.
 "
 " 'autoread' only reloads a buffer when something asks it to, via :checktime.
 " The usual autocmd triggers all depend on *you*: FocusGained needs Nvim to
@@ -11,7 +11,12 @@
 " fires while you're typing in a terminal pane. So poll on a timer as well --
 " that's what reloads a file edited outside Nvim without clicking into it.
 
-let s:timer = -1
+" The timer id is deliberately NOT script-local. In autoload/ this file was
+" sourced once per session, so an s: variable survived a `source init.vim` and
+" the guard in AutoreloadEnable() held. Sourced normally it is re-read every
+" time, which would reset s:timer to -1, pass the guard, and stack a second
+" polling timer on every re-source. get() keeps whatever is already there.
+let g:autoreload_timer = get(g:, 'autoreload_timer', -1)
 
 function! s:tick(...) abort
   " :checktime throws inside the command-line window (q: / q/)
@@ -50,7 +55,7 @@ function! s:refresh_nerdtree() abort
   endtry
 endfunction
 
-function! autoreload#enable(...) abort
+function! AutoreloadEnable(...) abort
   let l:interval = a:0 ? a:1 : 1000
 
   augroup autoreload
@@ -63,17 +68,17 @@ function! autoreload#enable(...) abort
     autocmd BufWritePost * call s:refresh_nerdtree()
   augroup END
 
-  " Re-sourcing init.vim must not stack timers
-  if s:timer == -1
-    let s:timer = timer_start(l:interval, function('s:tick'), {'repeat': -1})
+  " Re-sourcing init.vim must not stack timers (see g:autoreload_timer above)
+  if g:autoreload_timer ==# -1
+    let g:autoreload_timer = timer_start(l:interval, function('s:tick'), {'repeat': -1})
   endif
-  return s:timer
+  return g:autoreload_timer
 endfunction
 
-function! autoreload#disable() abort
+function! AutoreloadDisable() abort
   autocmd! autoreload
-  if s:timer != -1
-    call timer_stop(s:timer)
-    let s:timer = -1
+  if g:autoreload_timer !=# -1
+    call timer_stop(g:autoreload_timer)
+    let g:autoreload_timer = -1
   endif
 endfunction

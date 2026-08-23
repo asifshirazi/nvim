@@ -76,6 +76,10 @@ two terminals stacked on the right running `claude` and `pi`. Pair it with
 In NERDTree, `V`-select several nodes and then `o` `i` `s` `t` `d` `m` `c` `a`
 to act on all of them at once.
 
+`m` opens the node menu as a Telescope picker at the cursor, so you can filter
+it by typing instead of hunting for the shortcut letter. `M` still gives you
+NERDTree's original menu.
+
 ## Colorschemes
 
 `\h` opens [themery](https://github.com/zaldih/themery.nvim), which lists every
@@ -106,12 +110,14 @@ The statusline follows along automatically wherever the theme ships a matching
 
 ```
 init.vim        settings, plugin config, in numbered sections
-plugins.vim     the plug#begin/end block
-keybinds.vim    mappings + which-key
-nerdtree.vim    NERDTree options, icons and highlights
-autoload/
+config/
+  plugins.vim     the plug#begin/end block
+  keybinds.vim    mappings + which-key
+  nerdtree.vim    NERDTree options, icons and highlights
+  telescope.vim   NERDTree's `m` menu as a Telescope picker
   autoreload.vim  reload files changed outside nvim, even mid-edit
-  restart.vim     :Restart, saves layout, re-execs, restores
+autoload/
+  restart.vim     :Restart, loaded only when you first use it
 ```
 
 Sessions are saved per working directory, so reopening `nvim` in a project

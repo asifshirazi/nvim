@@ -1,7 +1,7 @@
 "==== 1. Plugins & keybindings ==============================================
 " (everything below depends on their g: variables)
-source ~/.config/nvim/plugins.vim
-source ~/.config/nvim/keybinds.vim
+source ~/.config/nvim/config/plugins.vim
+source ~/.config/nvim/config/keybinds.vim
 
 " ==== 2. Basic settings =====================================================
 syntax enable                " syntax highlighting for all filetypes
@@ -181,12 +181,19 @@ EOF
 " NERDTree, its devicons glyphs and the neutral-name highlights all live in
 " nerdtree.vim. Sourced here rather than at the top because it applies
 " highlights immediately and needs the colorscheme already set.
-source ~/.config/nvim/nerdtree.vim
+source ~/.config/nvim/config/nerdtree.vim
+
+" NERDTree's `m` menu as a Telescope picker, with the original menu on `M`.
+" Sourced separately because it registers its key maps from a VimEnter autocmd
+" rather than immediately, for the reasons in that file's header.
+source ~/.config/nvim/config/telescope.vim
 
 " ==== 8. Auto-detect external file changes ==================================
-" Implementation lives in autoload/autoreload.vim (autocmds + a polling timer,
-" so files reload even while you're typing in a terminal pane).
-call autoreload#enable()
+" Implementation lives in config/autoreload.vim (autocmds + a polling timer,
+" so files reload even while you're typing in a terminal pane). Sourced rather
+" than autoloaded: it is entered immediately, so laziness bought nothing.
+source ~/.config/nvim/config/autoreload.vim
+call AutoreloadEnable()
 
 " ==== 9. Sessions (auto-session) ============================================
 " Saves the layout on exit and restores it when nvim starts in the same cwd
