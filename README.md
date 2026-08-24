@@ -1,52 +1,37 @@
 # nvim
 
-My Neovim configuration. Still Vimscript, still
-[vim-plug](https://github.com/junegunn/vim-plug), deliberately no LSP.
+My Neovim configuration. Lua on [lazy.nvim](https://github.com/folke/lazy.nvim),
+built around [snacks.nvim](https://github.com/folke/snacks.nvim), deliberately
+no LSP.
 
-It opens instantly and gets out of the way: a NERDTree sidebar, fuzzy finding
-over files, popup completion on the command line, sessions that remember your
-layout per project, and 43 colorschemes you can flip through with live preview
-and one keystroke.
+It opens instantly and gets out of the way: an explorer sidebar, fuzzy finding
+over files, popup completion on the command line, git in the gutter and on the
+statusline, sessions that remember your layout per project, and 43 colorschemes
+you can flip through with live preview and one keystroke.
 
 ## Requirements
 
-- **Neovim >= 0.11.7, built with LuaJIT.** That is Telescope's floor, the
-  highest of any plugin here. Check with `:version`. Developed on 0.12.4.
-- A **Nerd Font** in your terminal, for the file icons and tree arrows
+- **Neovim >= 0.12, built with LuaJIT.** `\R` uses the `:restart` built-in,
+  which is 0.12+. Check with `:version`. Developed on 0.12.4.
+- A **Nerd Font** in your terminal, for the file and statusline icons
 - **True colour.** The themes are 24-bit only, so macOS `Terminal.app` will
   render them wrong. iTerm2, Ghostty, WezTerm and Kitty are all fine.
-- Optional: [`ranger`](https://github.com/ranger/ranger), for `\f`
-- Optional: [`ripgrep`](https://github.com/BurntSushi/ripgrep), for `\ts`.
-  Telescope hardcodes `rg` in its default `vimgrep_arguments`, so live grep
-  does nothing without it.
+- **[`ripgrep`](https://github.com/BurntSushi/ripgrep)**, for `\ts`. The snacks
+  grep picker shells out to `rg`, so live grep does nothing without it.
+- **[`lazygit`](https://github.com/jesseduffield/lazygit)**, for `\gg`.
 - Optional: [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
   with the `regex` and `bash` parsers, which noice uses to highlight the
   cmdline. Everything works without it; `:checkhealth noice` will warn.
 
 ## Install
 
-**1. Clone this config.** Do this first, because `git clone` refuses a
-non-empty directory: installing vim-plug before this would break it.
+Clone and start Neovim. lazy.nvim bootstraps itself on first run and installs
+every plugin -- there is nothing else to set up.
 
 ```sh
 git clone https://github.com/asifshirazi/nvim.git ~/.config/nvim
+nvim
 ```
-
-**2. Install [vim-plug](https://github.com/junegunn/vim-plug).** It is not
-vendored in this repo.
-
-```sh
-curl -fLo ~/.config/nvim/autoload/plug.vim --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-```
-
-**3. Install the plugins.**
-
-```sh
-nvim +PlugInstall +qa
-```
-
-Plugins install into `~/.local/share/nvim/plugged`.
 
 ## Keymaps
 
@@ -55,30 +40,29 @@ Leader is `\` (Vim's default). Press it and pause to get a
 
 | key | does |
 |---|---|
-| `<C-t>` | toggle the NERDTree sidebar |
+| `<C-t>` | toggle the explorer sidebar |
 | `<Tab>` / `<S-Tab>` | next / previous tab in this window's own strip |
 | `<C-q>` | close buffer, keeping the window layout |
-| `\f` | Ranger |
-| `\tf` | Telescope find files (dropdown, no preview) |
-| `\ts` | Telescope live grep, search file contents |
-| `\tgs` | Telescope git status (ivy panel) |
+| `\tf` | find files (dropdown, no preview) |
+| `\ts` | live grep, search file contents |
+| `\gs` | git status (ivy panel) |
+| `\gg` | lazygit |
 | `\h` | Themery, the colorscheme picker with live preview |
-| `\d` | development mode: tree left, file centre, `claude` and `pi` terminals right |
-| `\c` | small terminal split below |
+| `\d` | development mode: explorer left, file centre, `claude` and `pi` terminals right |
+| `\c` | toggleable terminal panel below |
+| `\l` | reveal whitespace in this window |
 | `\R` | `:Restart`, re-execs nvim and restores the whole layout |
 | `\bd` | close buffer |
 
 `\d` is the one worth explaining. It lays out a whole working session in a
-single keystroke: NERDTree on the left, the file you were on in the middle, and
-two terminals stacked on the right running `claude` and `pi`. Pair it with
-`\R`, which re-execs Neovim and puts that layout back exactly as it was.
+single keystroke: the explorer on the left revealing the file you were on, that
+file in the middle, and two terminals stacked on the right running `claude` and
+`pi`. Pair it with `\R`, which re-execs Neovim and puts that layout back
+exactly as it was.
 
-In NERDTree, `V`-select several nodes and then `o` `i` `s` `t` `d` `m` `c` `a`
-to act on all of them at once.
-
-`m` opens the node menu as a Telescope picker at the cursor, so you can filter
-it by typing instead of hunting for the shortcut letter. `M` still gives you
-NERDTree's original menu.
+In the explorer, files are managed in place: `a` add, `r` rename, `d` delete,
+`m` move, `c` copy, `y`/`p` yank and paste, `u` refresh -- each prompting in a
+floating input. Dotfiles are visible, and git status is marked per file.
 
 ## Colorschemes
 
@@ -92,43 +76,50 @@ including light, high-contrast and colourblind),
 [vague](https://github.com/vague-theme/vague.nvim),
 [modus](https://github.com/miikanissi/modus-themes.nvim) (WCAG AAA).
 
-The statusline follows along automatically wherever the theme ships a matching
-[vim-airline](https://github.com/vim-airline/vim-airline) theme.
+The statusline follows along automatically: lualine's `auto` theme picks up
+whatever colorscheme is active.
 
 ## What's in here
 
 | | |
 |---|---|
-| File explorer | nerdtree, nerdtree-visual-selection, ranger.vim |
-| Navigation | telescope, bclose, which-key |
+| Explorer & pickers | snacks.nvim (explorer, files, grep, git status) |
+| Git | lazygit via snacks, gitsigns hunk signs and counts |
+| Statusline | lualine, fed by gitsigns |
 | Command line | noice (floating cmdline) + nvim-cmp sources |
+| Notifications | snacks notifier, behind noice |
 | Sessions | auto-session, plus `:Restart` |
-| Statusline | vim-airline |
 | Buffer tabs | winbar strip, drawn per window (in this config) |
-| Icons | vim-devicons, nerdtree-syntax-highlight |
+| Icons | nvim-web-devicons |
 | Cursor | smear-cursor (animated cursor trail) |
+| Menus | which-key |
 
 ## Layout
 
 ```
-init.vim        settings, plugin config, in numbered sections
-config/
-  plugins.vim     the plug#begin/end block
-  keybinds.vim    mappings + which-key
-  nerdtree.vim    NERDTree options, icons and highlights
-  telescope.vim   NERDTree's `m` menu as a Telescope picker
-  themery.vim     the colorscheme switcher and its discovered list
-  airline.vim     statusline options
-  winbar.vim      per-window buffer tabs, and the <Tab> cycling they feed
-  autoreload.vim  reload files changed outside nvim, even mid-edit
-autoload/
-  restart.vim     :Restart, loaded only when you first use it
+init.lua          entry point: settings, lazy bootstrap, keymaps, autoreload, :Restart
+lua/config/
+  options.lua       settings, appearance, providers
+  lazy.lua          lazy.nvim bootstrap and setup
+  keymaps.lua       mappings (also loads winbar)
+lua/plugins/        one spec file per concern
+  snacks.lua        explorer, pickers, notifier, terminal, QoL modules
+  cmdline.lua       nvim-cmp (cmdline only) + noice
+  statusline.lua    lualine + gitsigns
+  colorschemes.lua  the bundled themes + themery
+  sessions.lua      auto-session and its hooks
+  whichkey.lua      the \ menu, hand-ordered
+  smear-cursor.lua  animated cursor trail
+lua/
+  winbar.lua        per-window buffer tabs, and the <Tab> cycling they feed
+  restart.lua       :Restart, required on first use
+  autoreload.lua    reload files changed outside nvim, even mid-edit
 ```
 
 Sessions are saved per working directory, so reopening `nvim` in a project
-restores the windows, tabs and tree state you left behind. There is no session
-file to name or manage. Terminal panes running `claude`, `pi` or `omp`
-come back with `--continue`, so each resumes where it left off.
+restores the windows and tabs you left behind. There is no session file to name
+or manage. Terminal panes running `claude`, `pi` or `omp` come back with
+`--continue`, so each resumes where it left off.
 
 Everything is commented with the *reason* for a setting rather than a
 restatement of it, usually with a `file:line` pointer into the plugin source

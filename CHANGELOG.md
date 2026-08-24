@@ -5,6 +5,67 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-25
+
+The config is Lua on lazy.nvim now, and one plugin does what nine used to:
+snacks.nvim replaces the NERDTree/Telescope stack, with lualine and gitsigns
+taking over the statusline.
+
+### Added
+
+- **[snacks.nvim](https://github.com/folke/snacks.nvim)**: the explorer
+  sidebar, the pickers, notifications, the toggleable terminal, and the
+  quality-of-life modules (bigfile, indent guides, input, quickfile, smooth
+  scroll, statuscolumn). The explorer keeps the old tree's shape -- 22 columns
+  on the left, dotfiles visible, git status marks -- and brings built-in file
+  operations (`a` add, `r` rename, `d` delete, `m` move, `c` copy, `u`
+  refresh), each prompting in a floating input.
+- **lazygit on `\gg`**, opened in a floating terminal themed to match the
+  active colorscheme.
+- **A lualine statusline fed by gitsigns**: the branch, and `+n ~n -n` counts
+  for the current buffer diffed against the index. gitsigns also draws the
+  hunk signs in the gutter. The mode indicator moved into the bar
+  (`showmode` off).
+- **`\l` reveals whitespace** in the current window: `$` line ends, `>-` tabs,
+  `-` trailing and leading spaces, `&` non-breaking spaces.
+- **`\gs`, git status as an ivy picker** (moved from `\tgs`), grouped with
+  lazygit under `\g`.
+
+### Changed
+
+- **The whole config is Lua on lazy.nvim.** `init.vim` and `config/*.vim` are
+  gone; specs live one file per concern under `lua/plugins/`, and lazy.nvim
+  bootstraps itself on first start -- there is no plugin manager to install by
+  hand any more.
+- **`<C-t>` toggles the snacks explorer.** `:Restart` reopens the sidebar,
+  now at the cwd root: snacks keeps its own tree state, so the expanded-folder
+  capture is gone. auto-session still restores with the sidebar closed.
+- **`\tf` and `\ts` are snacks pickers**, in the same dropdown layout the
+  Telescope versions used.
+- **`<C-q>` prompts to save or discard a modified buffer** instead of refusing
+  with an error. The window layout is preserved as before, and `\bd` behaves
+  the same way.
+- **`\c` toggles its 10-line bottom terminal** instead of stacking a fresh
+  split on every press.
+- **`\d` reveals the current file in the explorer** rather than just opening
+  the tree at its root.
+- **Winbar icons come from nvim-web-devicons.** Every file gets a coloured
+  glyph now; types outside the old NERDTree colour tables used to render
+  uncoloured, and unknown types take devicons' default grey.
+- **Notifications render through snacks.notifier.** noice's notify view falls
+  through to it with nvim-notify gone.
+
+### Removed
+
+- **Twelve plugins**: nerdtree, nerdtree-visual-selection,
+  vim-nerdtree-syntax-highlight, ranger.vim, vim-devicons, telescope.nvim,
+  plenary.nvim, bclose.vim, nvim-notify, vim-airline, vim-airline-themes and
+  vim-fugitive. Nineteen remain.
+- **`\f` (Ranger).** A full-screen TUI file manager has no snacks equivalent,
+  and the explorer covers browsing.
+- **The NERDTree `m`-menu Telescope port**, subsumed by the explorer's
+  built-in file operations.
+
 ## [0.2.4] - 2026-08-24
 
 Buffer tabs are drawn per window now, and `omp` terminals resume across a
@@ -181,6 +242,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.3.0]: https://github.com/asifshirazi/nvim/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/asifshirazi/nvim/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/asifshirazi/nvim/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/asifshirazi/nvim/compare/v0.2.1...v0.2.2
