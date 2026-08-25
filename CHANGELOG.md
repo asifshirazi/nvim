@@ -5,6 +5,53 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-08-25
+
+The command line moves to blink.cmp, terminal panes tone with the sidebar, and
+:Restart restores pane sizes -- plus a round of restart-flow fixes.
+
+### Added
+
+- **Terminal panes share the explorer's darker background.** Both take the
+  theme's floating-window tone, so a `\d` layout reads as one surface instead
+  of terminals sitting on the lighter editor background. Covers the snacks
+  terminal and the plain `:terminal` panes.
+- **Instant reload when a terminal job exits.** `TermClose`/`TermLeave` join
+  the autoreload triggers, so a file rewritten by claude/pi/omp refreshes the
+  moment the job finishes rather than on the next one-second poll.
+- **`:Restart` confirms when it's done**, with a notification naming what came
+  back (layout, explorer and claude/pi/omp sessions).
+- **Slanted/rounded statusline separators** and a line-number icon on the
+  cursor-position segment; the pointed `>`/`<` component dividers are dropped.
+
+### Changed
+
+- **Command-line completion is [blink.cmp](https://github.com/saghen/blink.cmp)**,
+  replacing nvim-cmp and its cmp-cmdline/cmp-path/cmp-buffer sources -- four
+  plugins down to one, with blink's own fuzzy matcher. It stays command-line
+  only (no insert-mode popup, no LSP here): the `:` menu appears after four
+  characters of a command name, `/` and `?` keep the classic bottom line, and
+  `<CR>` accepts-and-runs. noice's own popup is off, so blink draws the one menu.
+- **The explorer's `watch` is set explicitly**, documenting that the sidebar
+  refreshes itself on filesystem changes -- the reason autoreload no longer
+  pokes the tree.
+
+### Removed
+
+- **nvim-cmp, cmp-cmdline, cmp-path and cmp-buffer**, replaced by blink.cmp.
+
+### Fixed
+
+- **`:Restart` restores pane widths and heights.** The explorer was closed
+  before `mksession`, so the remaining panes were saved at their expanded sizes
+  and the reopened sidebar reflowed them. The full-layout sizes are captured
+  before the close now and re-applied once the sidebar is back.
+- **`:Restart` no longer errors or flashes a stray "Not auto-restoring"
+  message.** auto-session's auto-restore is disabled for the restart launch
+  (rather than aborted mid-flight), so it never races `:Restart` for the
+  restore, never emits that notice, and never trips noice's "vim.notify has
+  been overwritten" guard. A redraw after restore clears leftover cells.
+
 ## [0.3.0] - 2026-08-25
 
 The config is Lua on lazy.nvim now, and one plugin does what nine used to:
@@ -242,6 +289,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.3.1]: https://github.com/asifshirazi/nvim/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/asifshirazi/nvim/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/asifshirazi/nvim/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/asifshirazi/nvim/compare/v0.2.2...v0.2.3

@@ -86,7 +86,7 @@ whatever colorscheme is active.
 | Explorer & pickers | snacks.nvim (explorer, files, grep, git status) |
 | Git | lazygit via snacks, gitsigns hunk signs and counts |
 | Statusline | lualine, fed by gitsigns |
-| Command line | noice (floating cmdline) + nvim-cmp sources |
+| Command line | noice (floating cmdline) + blink.cmp |
 | Notifications | snacks notifier, behind noice |
 | Sessions | auto-session, plus `:Restart` |
 | Buffer tabs | winbar strip, drawn per window (in this config) |
@@ -104,7 +104,7 @@ lua/config/
   keymaps.lua       mappings (also loads winbar)
 lua/plugins/        one spec file per concern
   snacks.lua        explorer, pickers, notifier, terminal, QoL modules
-  cmdline.lua       nvim-cmp (cmdline only) + noice
+  cmdline.lua       blink.cmp (cmdline only) + noice
   statusline.lua    lualine + gitsigns
   colorschemes.lua  the bundled themes + themery
   sessions.lua      auto-session and its hooks
