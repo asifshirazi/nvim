@@ -8,7 +8,21 @@ return {
   {
     "rmagatti/auto-session",
     config = function()
+      -- :Restart (lua/restart.lua) drops a sentinel before re-execing nvim, then
+      -- sources its own session -- so auto-session must NOT also auto-restore, or
+      -- the layout loads twice and every terminal spawns twice. Disable
+      -- auto_restore for this one launch when the fresh sentinel is present;
+      -- auto_restore_session() short-circuits on it (init.lua:503) before the
+      -- "Not auto-restoring" notify ever fires -- no message, no startup race.
+      local flag = vim.fn.stdpath('state') .. '/restart-skip-autosession'
+      local skip_restore = false
+      if vim.fn.filereadable(flag) == 1 then
+        local stamp = tonumber(vim.fn.readfile(flag)[1] or '') or 0
+        vim.fn.delete(flag)                    -- one-shot; never block a later start
+        skip_restore = (os.time() - stamp) <= 60 -- ignore a stale flag from a crash
+      end
       require('auto-session').setup {
+        auto_restore = not skip_restore,
         -- Explorer pickers are scratch buffers and do not survive a session:
         -- close them (across all tabs, with the scheduled window teardown
         -- drained) before saving. Like the old tree close, auto-session does
@@ -31,24 +45,6 @@ return {
         },
         -- Don't restore a session for a bare home/root directory
         suppressed_dirs = { '~/', '~/Downloads', '/' },
-        -- :Restart (lua/restart.lua) leaves a sentinel before re-execing nvim.
-        -- :restart starts with no file args, which is our auto-restore trigger, so
-        -- without this BOTH sessions would load and every terminal would be spawned
-        -- twice (two each of claude, pi and omp -- one set hidden but still running).
-        pre_restore_cmds = {
-          function()
-            local flag = vim.fn.stdpath('state') .. '/restart-skip-autosession'
-            if vim.fn.filereadable(flag) == 0 then
-              return true                        -- normal start: restore as usual
-            end
-            local stamp = tonumber(vim.fn.readfile(flag)[1] or '') or 0
-            vim.fn.delete(flag)                  -- one-shot; never block a later start
-            if os.time() - stamp > 60 then
-              return true                        -- stale flag (crash): restore anyway
-            end
-            return false                         -- :Restart will restore instead
-          end,
-        },
       }
     end,
   },

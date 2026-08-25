@@ -18,6 +18,13 @@ return {
       options = {
         theme = "auto",       -- follows themery colorscheme switches
         globalstatus = false, -- one bar per window (nickjj keeps laststatus=2)
+        -- Slant after the left sections, a rounded cap before the right ones.
+        -- section_separators.left sits on the right edge of a|b|c; .right sits
+        -- on the left edge of x|y|z. Written as \u{} so the source stays ASCII.
+        section_separators = { left = "\u{e0b8}", right = "\u{e0b6}" },
+        -- No component chevrons: '' drops the > / < between components (the
+        -- pointed dividers around progress/location in the default).
+        component_separators = "",
       },
       sections = {
         lualine_a = { "mode" },
@@ -36,7 +43,7 @@ return {
           "filetype",
         },
         lualine_y = { "progress" },
-        lualine_z = { "location" },
+        lualine_z = { { "location", icon = "\u{f0263}" } }, -- nf-md-format-align-left (line rows); U+E0A1 renders as crude "LN" text
       },
     },
   },

@@ -40,9 +40,9 @@ vim.opt.listchars = {
   nbsp = "&",
 }
 
--- Command line & messages (nvim-cmp + noice).
--- cmp-cmdline builds its list from a single getcompletion() call, which is
--- prefix-and-case-sensitive unless 'fuzzy' is set. See init.vim section 4.
+-- Command line & messages (blink.cmp + noice). blink brings its own fuzzy
+-- matcher, so this only affects the native wildmenu fallback -- fuzzy there
+-- too, for the case where blink's binary is unavailable.
 vim.opt.wildoptions:append("fuzzy")
 
 -- Providers

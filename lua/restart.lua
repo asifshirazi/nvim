@@ -150,11 +150,58 @@ function M.close_explorers()
   return #explorers > 0
 end
 
+-- Reopen the explorer and restore the pre-restart window sizes. mksession
+-- records sizes AFTER the explorer is closed (the other panes expand to fill
+-- the freed columns), and reopening the sidebar reflows them again -- so the
+-- saved layout loses its widths. Re-apply the winrestcmd captured while the
+-- explorer was still open, once the reopened sidebar window actually exists
+-- (Snacks.explorer.open schedules the window, so poll briefly for it). Each
+-- sub-command is pcall'd so a stale winnr (e.g. a transient float) can't abort
+-- the rest. winrestcmd already double-passes to converge.
+function M.restore_layout(winsizes)
+  Snacks.explorer.open()
+  local tries = 0
+  local done = false
+  local timer = (vim.uv or vim.loop).new_timer()
+  timer:start(30, 30, vim.schedule_wrap(function()
+    -- schedule_wrap defers each tick, so several can queue before the timer is
+    -- stopped; the done guard makes the teardown+apply run exactly once.
+    if done then
+      return
+    end
+    tries = tries + 1
+    local ready = false
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if vim.bo[vim.api.nvim_win_get_buf(w)].filetype == "snacks_picker_list" then
+        ready = true
+        break
+      end
+    end
+    if ready or tries > 30 then
+      done = true
+      timer:stop()
+      if not timer:is_closing() then
+        timer:close()
+      end
+      if ready then
+        for _, c in ipairs(vim.split(winsizes, "|", { trimempty = true })) do
+          pcall(vim.cmd, c)
+        end
+        -- Clear any stale cells left by the re-exec + async resize.
+        pcall(vim.cmd, "redraw!")
+      end
+    end
+  end))
+end
+
 -- Write the session file, with the two fix-ups above applied.
 function M.save()
   -- Close explorer sidebars first, remembering whether any were open so the
   -- session file can reopen one. Expanded-folder state is not restored -- the
   -- reopened sidebar starts at the cwd root.
+  -- Capture the full-layout window sizes (explorer still open) so they can be
+  -- restored after the sidebar is reopened -- see M.restore_layout.
+  local winsizes = vim.fn.winrestcmd()
   local had_explorer = M.close_explorers()
   vim.cmd('mksession! ' .. vim.fn.fnameescape(session_file))
   local lines = resume_rewrite(vim.fn.readfile(session_file))
@@ -173,13 +220,22 @@ function M.save()
   if had_explorer then
     vim.list_extend(lines, {
       '',
-      '" added by :Restart -- reopen the explorer sidebar',
-      'silent! lua Snacks.explorer.open()',
+      '" added by :Restart -- reopen the explorer and restore pane sizes',
+      'silent! lua require("restart").restore_layout([==[' .. winsizes .. ']==])',
     })
   end
   -- Per-window buffer strips (lua/winbar.lua). Appended last so the lists
   -- resolve against the final buffer set.
   vim.list_extend(lines, require("winbar").session_lines())
+  -- Confirm the restore in the new instance, once the layout is back. Deferred
+  -- so it lands after the synchronous restore (and reads as "done").
+  local restored = had_explorer and 'layout, explorer and claude/pi/omp sessions'
+    or 'layout and claude/pi/omp sessions'
+  vim.list_extend(lines, {
+    '',
+    '" added by :Restart -- confirm the restore',
+    'silent! lua vim.schedule(function() vim.notify("Restart complete: restored ' .. restored .. '", vim.log.levels.INFO, { title = "Restart" }) end)',
+  })
   vim.fn.writefile(lines, session_file)
   return session_file
 end

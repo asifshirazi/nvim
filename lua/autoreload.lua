@@ -26,7 +26,9 @@ function M.enable(interval)
   interval = interval or 1000
 
   local grp = vim.api.nvim_create_augroup('autoreload', { clear = true })
-  vim.api.nvim_create_autocmd({ 'FocusGained', 'CursorHold', 'CursorHoldI', 'BufEnter' }, {
+  -- TermClose/TermLeave give instant reload the moment a terminal job (claude/
+  -- pi/omp) exits or you leave terminal mode, ahead of the 1s poll.
+  vim.api.nvim_create_autocmd({ 'FocusGained', 'CursorHold', 'CursorHoldI', 'BufEnter', 'TermClose', 'TermLeave' }, {
     group = grp,
     pattern = '*',
     callback = tick,

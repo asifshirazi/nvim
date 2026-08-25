@@ -17,8 +17,9 @@ return {
         enabled = true,
         sources = {
           explorer = {
-            hidden = true,                        -- parity: NERDTreeShowHidden=1
-            layout = { layout = { width = 22 } }, -- parity: NERDTreeWinSize=22
+            hidden = true, -- show dotfiles
+            watch = true,  -- auto-refresh tree on filesystem changes (fs-events)
+            layout = { layout = { width = 22 } }, -- sidebar preset (search input on top)
           },
         },
       },
@@ -36,6 +37,34 @@ return {
         callback = function()
           if vim.fn.winnr("$") == 1 and vim.bo.filetype == "snacks_picker_list" then
             vim.cmd.quit()
+          end
+        end,
+      })
+
+      -- Give snacks terminals (and other SnacksNormal windows) the darker
+      -- NormalFloat background, so a terminal pane tones with the explorer
+      -- sidebar instead of the lighter editor Normal. snacks links SnacksNormal
+      -- -> NormalFloat only with default=true, and tokyonight defines it first
+      -- with no bg, so re-assert the link here and on every colorscheme change
+      -- (themery \h re-applies the theme, which would otherwise clobber it).
+      local function tone_snacks_normal()
+        vim.api.nvim_set_hl(0, "SnacksNormal", { link = "NormalFloat" })
+        vim.api.nvim_set_hl(0, "SnacksNormalNC", { link = "NormalFloat" })
+      end
+      tone_snacks_normal()
+      vim.api.nvim_create_autocmd("ColorScheme", { callback = tone_snacks_normal })
+
+      -- Plain :terminal windows (the \d dev-layout claude/pi panes) are not
+      -- snacks windows, so the relink above never reaches them -- they use the
+      -- global Normal. Map their Normal to NormalFloat on open so they tone with
+      -- the explorer too. Skipped when a Normal mapping already exists, which
+      -- leaves the snacks \c terminal (Normal:SnacksNormal) untouched.
+      vim.api.nvim_create_autocmd("TermOpen", {
+        callback = function()
+          local wh = vim.wo.winhighlight
+          if not wh:find("Normal:", 1, true) then
+            vim.wo.winhighlight = (wh == "" and "" or wh .. ",")
+              .. "Normal:NormalFloat,NormalNC:NormalFloat"
           end
         end,
       })
