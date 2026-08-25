@@ -7,7 +7,7 @@
 -- `syntax enable` is dropped: syntax is on by default in Neovim.
 
 -- Block where the cursor sits on a character, bar where it sits between them.
-vim.opt.guicursor = "n-v-c:block,i-ci-ve:ver25,r-cr:hor20,o:hor50"
+vim.opt.guicursor = "n-v-c:block,i-ci-ve:ver25-blinkwait400-blinkoff200-blinkon150,r-cr:hor20-blinkwait400-blinkoff200-blinkon150,o:hor50,t:ver25-blinkwait400-blinkoff200-blinkon150"
 vim.opt.encoding = "utf-8"            -- use UTF-8 file encoding
 vim.opt.clipboard:append("unnamedplus") -- use system clipboard directly (register '+')
 vim.opt.mouse = "a"                   -- mouse in all modes (click cursor, resize splits)

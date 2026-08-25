@@ -60,9 +60,12 @@ vim.keymap.set('n', '<leader>d', function()
   if win then vim.fn.win_gotoid(win) end   -- end focused on the file, like <C-w>t<C-w>l did
 end, { silent = true, desc = 'Development mode' })
 
--- Toggleable terminal panel at the bottom (10 lines), cursor lands in it
-vim.keymap.set('n', '<leader>c', function()
-  Snacks.terminal.toggle(nil, { win = { position = 'bottom', height = 10 } })
-end, { silent = true, desc = 'Terminal' })
+-- Toggleable snacks terminals (lua/terminals.lua): \c a bottom split (10 lines),
+-- \v a right vertical split (40% wide), each split relative to the CURRENT
+-- window. Fixed count ids keep them distinct and let :Restart reopen the same
+-- ones (still toggleable).
+local terminals = require('terminals')
+vim.keymap.set('n', '<leader>c', terminals.bottom, { silent = true, desc = 'Terminal (bottom)' })
+vim.keymap.set('n', '<leader>v', terminals.vertical, { silent = true, desc = 'Terminal (vertical)' })
 
 vim.keymap.set('n', '<leader>R', '<cmd>Restart<cr>', { silent = true, desc = 'Restart (restore everything)' })

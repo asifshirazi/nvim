@@ -11,9 +11,15 @@ return {
       bigfile = { enabled = true },
       dashboard = {
         enabled = true,
-        -- 97-char wide logo fits comfortably; single pane keeps layout simple.
-        width = 100,
+        -- Logo fits in 60 cols (56 visible); header section centers it automatically.
+        width = 60,
         preset = {
+          header = [[
+ ▄▄▄▄ ▄▄▄▄  ▄▄▄▄ ▄▄   ▄▄▄▄ ▄▄▄▄▄  ▄▄▄  ▄▄ ▄▄ ▄▄ ▄▄▄▄ ▄▄ 
+░█ ░█ ░█ ░█ ░█ ░█ ░█ ░█ ░█ ▀▀ ░█ ░█ ░█ ░█ ░█ ▄▄ ░█ ░█ ░█
+▒█ ░█ ▒█ ▀▀ ▒█ ▒█ ▒█ ▒█ ░█ ▄░▀▀  ▒█▀▀▀ ▒█ ░█ ▒█ ▒█ ▒█ ▒█
+▓▓ ▓░ ▓▓    ▓▓ ▓▓ ▓▓ ▓▓ ▓░ ▒░ ▒░ ▓▓ ░█ ▓▓ ▓░ ▓▓ ▓▓ ▓▓ ▓▓
+ ▀▀▀▀ ▀▀    ▀▀ ▀▀ ▀▀  ▀▀▀▀ ▀▀▀▀▀  ▀▀▀▀  ▀▀▀  ▀▀ ▀▀ ▀▀ ▀▀]],
           keys = {
             { icon = " ", key = "f", desc = "Find File",    action = ":lua Snacks.dashboard.pick('files')" },
             { icon = " ", key = "g", desc = "Find Text",    action = ":lua Snacks.dashboard.pick('live_grep')" },
@@ -25,28 +31,20 @@ return {
           },
         },
         sections = {
-          -- ARMAZEVIM logo: static ANSI pixel art, cache forever.
-          {
-            section = "terminal",
-            cmd = "cat ~/.config/nvim/assets/logo.ans; sleep .1",
-            height = 6,
-            padding = 1,
-            ttl = math.huge,
-            indent = 0,
-          },
+          -- ARMAZEVIM logo: Forgotten Simplicity (TheDraw), centered by snacks.
+          { section = "header", padding = 1 },
           -- Shortcuts
           { section = "keys", gap = 1, padding = 1 },
-          -- Files and projects
+          -- Recent files
           { icon = " ", title = "Recent Files", section = "recent_files", indent = 2, padding = 1 },
-          { icon = " ", title = "Projects",     section = "projects",     indent = 2, padding = 1 },
           -- Git log for the current repo (hidden outside repos, cached 5 min).
           {
             section = "terminal",
             icon = " ",
             title = "Git Log",
             enabled = function() return Snacks.git.get_root() ~= nil end,
-            cmd = "git log --oneline --graph -8 --pretty=format:'%C(yellow)%h%Creset %C(cyan)%<(14,trunc)%an%Creset %C(white)%<(48,trunc)%s%Creset %C(green)(%cr)%Creset' --color=always 2>/dev/null; sleep .1",
-            height = 8,
+            cmd = "git --no-pager log --graph -2 --pretty=format:'%C(yellow)%h%Creset %C(cyan)%<(12,trunc)%an%Creset%C(green)%>(34)%ar%Creset%n    %C(white)%<(50,trunc)%s%Creset' --color=always 2>/dev/null; sleep .1",
+            height = 6,
             padding = 1,
             ttl = 5 * 60,
             indent = 3,

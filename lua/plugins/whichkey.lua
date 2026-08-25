@@ -59,7 +59,8 @@ return {
         { '<leader>l', desc = 'Toggle listchars', icon = { icon = '\u{f0208}', color = 'cyan' } },               -- nf-md-eye
         { '<leader>h', desc = 'Themery (colorscheme)', icon = { icon = '\u{f03d8}', color = 'purple' } },        -- nf-md-palette
         { '<leader>d', desc = 'Development mode', icon = { icon = '\u{f0bcc}', color = 'orange' } },             -- nf-md-view_split_vertical
-        { '<leader>c', desc = 'Terminal', icon = { icon = '\u{f018d}', color = 'red' } },                        -- nf-md-console
+        { '<leader>c', desc = 'Terminal (bottom)', icon = { icon = '\u{f018d}', color = 'red' } },               -- nf-md-console
+        { '<leader>v', desc = 'Terminal (vertical)', icon = { icon = '\u{f018d}', color = 'red' } },             -- nf-md-console
         { '<leader>R', desc = 'Restart (restore everything)', icon = { icon = '\u{f0450}', color = 'green' } },  -- nf-md-refresh
         { '<leader>b', group = 'buffer', icon = { icon = '\u{f0219}', color = 'cyan' } },                        -- nf-md-file_document
         { '<leader>bd', desc = 'Close buffer', icon = { icon = '\u{f0156}', color = 'cyan' } },                  -- nf-md-close
