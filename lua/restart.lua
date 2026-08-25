@@ -150,6 +150,23 @@ function M.close_explorers()
   return #explorers > 0
 end
 
+-- Paths of the currently-expanded explorer folders, so :Restart can reopen
+-- exactly those on the fresh tree (the snacks Tree is per-process and comes
+-- back collapsed after the re-exec). Walks the snacks.explorer.tree singleton;
+-- pcall-guarded to return {} if the internals change.
+function M.open_dirs()
+  local dirs = {}
+  pcall(function()
+    local Tree = require("snacks.explorer.tree")
+    Tree:walk(Tree.root, function(node)
+      if node.dir and node.open and node.path and node.path ~= "" then
+        dirs[#dirs + 1] = node.path
+      end
+    end)
+  end)
+  return dirs
+end
+
 -- Reopen the explorer and restore the pre-restart window sizes. mksession
 -- records sizes AFTER the explorer is closed (the other panes expand to fill
 -- the freed columns), and reopening the sidebar reflows them again -- so the
@@ -158,7 +175,7 @@ end
 -- (Snacks.explorer.open schedules the window, so poll briefly for it). Each
 -- sub-command is pcall'd so a stale winnr (e.g. a transient float) can't abort
 -- the rest. winrestcmd already double-passes to converge.
-function M.restore_layout(winsizes)
+function M.restore_layout(winsizes, open_dirs)
   Snacks.explorer.open()
   local tries = 0
   local done = false
@@ -184,6 +201,21 @@ function M.restore_layout(winsizes)
         timer:close()
       end
       if ready then
+        -- Reopen the folders that were expanded before the restart. The snacks
+        -- Tree is per-process and comes back collapsed after the re-exec, so
+        -- re-open each saved path and re-render before sizing.
+        if open_dirs and #open_dirs > 0 then
+          pcall(function()
+            local Tree = require("snacks.explorer.tree")
+            for _, d in ipairs(open_dirs) do
+              Tree:open(d)
+            end
+            local p = Snacks.picker.get({ source = "explorer" })[1]
+            if p then
+              require("snacks.explorer.actions").update(p, { refresh = true })
+            end
+          end)
+        end
         for _, c in ipairs(vim.split(winsizes, "|", { trimempty = true })) do
           pcall(vim.cmd, c)
         end
@@ -197,12 +229,31 @@ end
 -- Write the session file, with the two fix-ups above applied.
 function M.save()
   -- Close explorer sidebars first, remembering whether any were open so the
-  -- session file can reopen one. Expanded-folder state is not restored -- the
-  -- reopened sidebar starts at the cwd root.
-  -- Capture the full-layout window sizes (explorer still open) so they can be
-  -- restored after the sidebar is reopened -- see M.restore_layout.
+  -- session file can reopen one. Capture, before closing: the full-layout window
+  -- sizes (explorer still open) and the set of expanded folders, both restored
+  -- after the sidebar is reopened -- see M.restore_layout.
   local winsizes = vim.fn.winrestcmd()
+  local open_dirs = M.open_dirs()
+  -- Snacks terminals (lua/terminals.lua) don't survive mksession as managed
+  -- windows -- capture which are open and which resumable CLI (claude/pi/omp)
+  -- is running inside each, then wipe them so the session doesn't restore them
+  -- as unmanaged (non-toggleable) plain terminals. Reopened after restore.
+  local _term_states = require("terminals").open_state()
+  local term_ids, term_cmds = {}, {}
+  for _, ts in ipairs(_term_states) do
+    term_ids[#term_ids + 1] = ts.id
+    local pid = vim.fn.getbufvar(ts.bufnr, 'terminal_job_pid', 0)
+    if pid and pid ~= 0 and pid ~= '' then
+      local bname = vim.api.nvim_buf_get_name(ts.bufnr)
+      local cwd = vim.fn.matchstr(bname, '^term://\\zs.\\{-}\\ze//\\d\\+:')
+      local cli = resumable_descendant(pid, 0)
+      if cli ~= '' then
+        term_cmds[ts.id] = cli .. (has_session(cli, cwd) and ' --continue' or '')
+      end
+    end
+  end
   local had_explorer = M.close_explorers()
+  require("terminals").close_all()
   vim.cmd('mksession! ' .. vim.fn.fnameescape(session_file))
   local lines = resume_rewrite(vim.fn.readfile(session_file))
   -- The restore can leave an empty unnamed buffer listed but windowless -- an
@@ -218,15 +269,37 @@ function M.save()
     [[unlet! s:b]],
   })
   if had_explorer then
+    local parts = {}
+    for _, d in ipairs(open_dirs) do
+      parts[#parts + 1] = string.format("%q", d)
+    end
     vim.list_extend(lines, {
       '',
-      '" added by :Restart -- reopen the explorer and restore pane sizes',
-      'silent! lua require("restart").restore_layout([==[' .. winsizes .. ']==])',
+      '" added by :Restart -- reopen the explorer, its expanded folders and pane sizes',
+      'silent! lua require("restart").restore_layout([==[' .. winsizes .. ']==], {'
+        .. table.concat(parts, ',') .. '})',
     })
   end
   -- Per-window buffer strips (lua/winbar.lua). Appended last so the lists
   -- resolve against the final buffer set.
   vim.list_extend(lines, require("winbar").session_lines())
+  -- Reopen the snacks terminals that were open, as managed (toggleable) ones,
+  -- resuming any claude/pi/omp sessions that were running inside them.
+  if #term_ids > 0 then
+    local cmds_lua = ''
+    if not vim.tbl_isempty(term_cmds) then
+      local kv = {}
+      for id, cmd in pairs(term_cmds) do
+        kv[#kv + 1] = '[' .. id .. ']=' .. string.format('%q', cmd)
+      end
+      cmds_lua = ',{' .. table.concat(kv, ',') .. '}'
+    end
+    vim.list_extend(lines, {
+      '',
+      '" added by :Restart -- reopen the snacks terminals (toggleable again)',
+      'silent! lua require("terminals").reopen({' .. table.concat(term_ids, ',') .. '}' .. cmds_lua .. ')',
+    })
+  end
   -- Confirm the restore in the new instance, once the layout is back. Deferred
   -- so it lands after the synchronous restore (and reads as "done").
   local restored = had_explorer and 'layout, explorer and claude/pi/omp sessions'
