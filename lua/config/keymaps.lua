@@ -28,8 +28,9 @@ vim.keymap.set('n', '<C-q>', function() Snacks.bufdelete() end, { silent = true,
 vim.keymap.set('n', '<leader>bd', function() Snacks.bufdelete() end, { silent = true, desc = 'Close buffer' })
 
 -- layout=dropdown -- centred box, no preview pane.
-vim.keymap.set('n', '<leader>tf', function() Snacks.picker.files({ layout = 'dropdown' }) end, { silent = true, desc = 'Find files' })
-vim.keymap.set('n', '<leader>ts', function() Snacks.picker.grep({ layout = 'dropdown' }) end, { silent = true, desc = 'Search in files' })
+vim.keymap.set('n', '<leader>pf', function() Snacks.picker.files({ layout = 'dropdown' }) end, { silent = true, desc = 'Find files' })
+vim.keymap.set('n', '<leader>ps', function() Snacks.picker.grep({ layout = 'dropdown' }) end, { silent = true, desc = 'Search in files' })
+vim.keymap.set('n', '<leader>pn', function() Snacks.picker.notifications({ layout = 'dropdown' }) end, { silent = true, desc = 'Messages log' })
 
 -- Git: lazygit in a snacks float (snacks themes it to match the colorscheme);
 -- status as an ivy picker -- bottom panel with a preview, suits a status list.
@@ -60,12 +61,12 @@ vim.keymap.set('n', '<leader>d', function()
   if win then vim.fn.win_gotoid(win) end   -- end focused on the file, like <C-w>t<C-w>l did
 end, { silent = true, desc = 'Development mode' })
 
--- Toggleable snacks terminals (lua/terminals.lua): \c a bottom split (10 lines),
+-- Toggleable snacks terminals (lua/terminals.lua): \t a bottom split (10 lines),
 -- \v a right vertical split (40% wide), each split relative to the CURRENT
 -- window. Fixed count ids keep them distinct and let :Restart reopen the same
 -- ones (still toggleable).
 local terminals = require('terminals')
-vim.keymap.set('n', '<leader>c', terminals.bottom, { silent = true, desc = 'Terminal (bottom)' })
+vim.keymap.set('n', '<leader>t', terminals.bottom, { silent = true, desc = 'Terminal (bottom)' })
 vim.keymap.set('n', '<leader>v', terminals.vertical, { silent = true, desc = 'Terminal (vertical)' })
 
 vim.keymap.set('n', '<leader>R', '<cmd>Restart<cr>', { silent = true, desc = 'Restart (restore everything)' })
