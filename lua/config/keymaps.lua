@@ -31,6 +31,7 @@ vim.keymap.set('n', '<leader>bd', function() Snacks.bufdelete() end, { silent = 
 vim.keymap.set('n', '<leader>pf', function() Snacks.picker.files({ layout = 'dropdown' }) end, { silent = true, desc = 'Find files' })
 vim.keymap.set('n', '<leader>ps', function() Snacks.picker.grep({ layout = 'dropdown' }) end, { silent = true, desc = 'Search in files' })
 vim.keymap.set('n', '<leader>pn', function() Snacks.picker.notifications({ layout = 'dropdown' }) end, { silent = true, desc = 'Messages log' })
+vim.keymap.set('n', '<leader>pb', function() Snacks.picker.buffers({ layout = 'buflist' }) end, { silent = true, desc = 'Buffers' })
 
 -- Git: lazygit in a snacks float (snacks themes it to match the colorscheme);
 -- status as an ivy picker -- bottom panel with a preview, suits a status list.
@@ -61,12 +62,16 @@ vim.keymap.set('n', '<leader>d', function()
   if win then vim.fn.win_gotoid(win) end   -- end focused on the file, like <C-w>t<C-w>l did
 end, { silent = true, desc = 'Development mode' })
 
--- Toggleable snacks terminals (lua/terminals.lua): \t a bottom split (10 lines),
--- \v a right vertical split (40% wide), each split relative to the CURRENT
--- window. Fixed count ids keep them distinct and let :Restart reopen the same
--- ones (still toggleable).
+-- Toggleable snacks terminals (lua/terminals.lua): \t group, all splits
+-- relative to the CURRENT window. Fixed count ids keep pairs distinct and
+-- let :Restart reopen the same terminals toggleably. Claude/OMP terminals
+-- open a shell and type the launch command in once the job channel is ready.
 local terminals = require('terminals')
-vim.keymap.set('n', '<leader>t', terminals.bottom, { silent = true, desc = 'Terminal (bottom)' })
-vim.keymap.set('n', '<leader>v', terminals.vertical, { silent = true, desc = 'Terminal (vertical)' })
+vim.keymap.set('n', '<leader>tt', terminals.bottom,          { silent = true, desc = 'Terminal split bottom' })
+vim.keymap.set('n', '<leader>tv', terminals.vertical,        { silent = true, desc = 'Terminal split right' })
+vim.keymap.set('n', '<leader>tc', terminals.claude_bottom,   { silent = true, desc = 'Claude split bottom' })
+vim.keymap.set('n', '<leader>tx', terminals.claude_vertical, { silent = true, desc = 'Claude split right' })
+vim.keymap.set('n', '<leader>tp', terminals.omp_bottom,      { silent = true, desc = 'OMP split bottom' })
+vim.keymap.set('n', '<leader>to', terminals.omp_vertical,    { silent = true, desc = 'OMP split right' })
 
 vim.keymap.set('n', '<leader>R', '<cmd>Restart<cr>', { silent = true, desc = 'Restart (restore everything)' })

@@ -1,35 +1,80 @@
 -- Named, toggleable snacks terminals, shared by lua/config/keymaps.lua (the
--- \c / \v mappings) and lua/restart.lua (reopen across :Restart).
+-- \tt / \tv / \tc / \tx / \tp / \to mappings) and lua/restart.lua (reopen
+-- across :Restart).
 --
 -- snacks keys a terminal by { cmd, cwd, env, count } -- NOT its window position
--- (snacks/terminal.lua M.tid). Two toggles with cmd=nil and no count therefore
--- collide on count=1 and drive the same terminal. Fixed `count` ids below keep
--- \c and \v distinct AND let :Restart reopen the very same ids, so the keymaps
--- keep toggling them after a restart.
+-- (snacks/terminal.lua M.tid). All terminals use cmd=nil (the default shell) so
+-- restart.lua's resumable_descendant can walk the process tree, find claude/omp
+-- running as a child, and resume it with --continue. Fixed count ids keep each
+-- pair distinct AND let :Restart reopen the very same ids toggleably.
 
 local M = {}
 
 -- id -> window placement. relative='win' splits the current window (not the
--- full editor edge). See lua/config/keymaps.lua for the bindings.
+-- full editor edge). See lua/config/keymaps.lua for the \t* bindings.
 local specs = {
-  [1] = { position = "bottom", height = 10, relative = "win" }, -- \c
-  [2] = { position = "right", width = 0.4, relative = "win" },  -- \v
+  [1] = { position = "bottom", height = 10, relative = "win" }, -- \tt shell
+  [2] = { position = "right",  width  = 0.4, relative = "win" }, -- \tv shell
+  [3] = { position = "bottom", height = 10, relative = "win" }, -- \tc claude
+  [4] = { position = "right",  width  = 0.4, relative = "win" }, -- \tx claude
+  [5] = { position = "bottom", height = 10, relative = "win" }, -- \tp omp
+  [6] = { position = "right",  width  = 0.4, relative = "win" }, -- \to omp
 }
 
-local function toggle(id, opts)
-  opts = opts or {}
-  opts.count = id
-  opts.win = specs[id]
-  Snacks.terminal.toggle(nil, opts)
+local function toggle(id)
+  Snacks.terminal.toggle(nil, { count = id, win = specs[id] })
 end
 
-function M.bottom()
-  toggle(1)
+-- For claude/omp terminals: check for an existing buffer BEFORE toggle (toggle
+-- creates the buffer, so checking after always finds it and skips the send).
+-- If the terminal is new, poll until the shell's job channel is live, then type
+-- cmd. Subsequent toggles show/hide the existing pane -- no send. On :Restart,
+-- reopen() handles resume via its own polling + cmds table.
+local function open_with_cmd(id, cmd)
+  local is_new = true
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if (vim.b[b].snacks_terminal or {}).id == id then
+      is_new = false
+      break
+    end
+  end
+  toggle(id)
+  if not is_new then return end
+  local tries, sent = 0, false
+  local timer = (vim.uv or vim.loop).new_timer()
+  timer:start(50, 50, vim.schedule_wrap(function()
+    if sent then return end
+    tries = tries + 1
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if (vim.b[b].snacks_terminal or {}).id == id then
+        local chan = vim.b[b].terminal_job_id
+        if chan and chan > 0 then
+          sent = true
+          timer:stop()
+          if not timer:is_closing() then timer:close() end
+          vim.api.nvim_chan_send(chan, cmd .. '\r')
+          return
+        end
+      end
+    end
+    if tries > 40 then  -- 2 s timeout
+      sent = true
+      timer:stop()
+      if not timer:is_closing() then timer:close() end
+    end
+  end))
 end
 
-function M.vertical()
-  toggle(2)
-end
+-- Generic shell terminals.
+function M.bottom()   toggle(1) end
+function M.vertical() toggle(2) end
+
+-- Dedicated terminals: open a shell and auto-launch the command on first open.
+-- Subsequent toggles show/hide the existing pane without sending anything.
+function M.claude_bottom()   open_with_cmd(3, 'claude') end
+function M.claude_vertical() open_with_cmd(4, 'claude') end
+function M.omp_bottom()      open_with_cmd(5, 'omp')    end
+function M.omp_vertical()    open_with_cmd(6, 'omp')    end
 
 -- State of snacks terminals currently open in a window. Returns {id, bufnr}
 -- pairs so restart.lua can inspect each terminal's running process before
@@ -61,10 +106,10 @@ function M.close_all()
   end
 end
 
--- Reopen the given ids as managed snacks terminals (so \c / \v toggle them
--- again). Opened with snacks' normal opts so auto-insert etc. stay intact.
+-- Reopen the given ids as managed snacks terminals (so \tt/\tv/\tc/\tx/\tp/\to
+-- toggle them again). Opened with cmd=nil so auto-insert etc. stay intact.
 -- cmds: optional {[id] = 'shell command string'} -- sent to the new shell once
--- its job channel is ready, used by :Restart to resume claude/pi/omp sessions
+-- its job channel is ready, used by :Restart to resume claude/omp sessions
 -- that were running inside a terminal before the restart.
 function M.reopen(ids, cmds)
   if not ids or #ids == 0 then return end

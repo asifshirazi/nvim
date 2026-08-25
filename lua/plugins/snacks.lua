@@ -58,6 +58,33 @@ return {
       notifier = { enabled = true },
       picker = {
         enabled = true,
+        -- 'buflist' extends the dropdown layout with a key-hint footer on the
+        -- inner bordered box. Used only by \pb so other dropdown pickers stay
+        -- clean. Footer text matches the actual bindings from sources.lua.
+        layouts = {
+          buflist = {
+            layout = {
+              backdrop = false,
+              row = 1,
+              width = 0.4,
+              min_width = 80,
+              height = 0.8,
+              border = "none",
+              box = "vertical",
+              { win = "preview", title = "{preview}", height = 0.4, border = true },
+              {
+                box = "vertical",
+                border = true,
+                title = "{title} {live} {flags}",
+                title_pos = "center",
+                footer = " <Tab> select  <C-x> delete  <C-a> all  ? help ",
+                footer_pos = "center",
+                { win = "input", height = 1, border = "bottom" },
+                { win = "list", border = "none" },
+              },
+            },
+          },
+        },
         sources = {
           explorer = {
             hidden = true,      -- show dotfiles

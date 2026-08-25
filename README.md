@@ -1,4 +1,17 @@
-# nvim
+<div align="center">
+
+<pre>
+ ▄▄▄▄ ▄▄▄▄  ▄▄▄▄ ▄▄   ▄▄▄▄ ▄▄▄▄▄  ▄▄▄  ▄▄ ▄▄ ▄▄ ▄▄▄▄ ▄▄ 
+░█ ░█ ░█ ░█ ░█ ░█ ░█ ░█ ░█ ▀▀ ░█ ░█ ░█ ░█ ░█ ▄▄ ░█ ░█ ░█
+▒█ ░█ ▒█ ▀▀ ▒█ ▒█ ▒█ ▒█ ░█ ▄░▀▀  ▒█▀▀▀ ▒█ ░█ ▒█ ▒█ ▒█ ▒█
+▓▓ ▓░ ▓▓    ▓▓ ▓▓ ▓▓ ▓▓ ▓░ ▒░ ▒░ ▓▓ ░█ ▓▓ ▓░ ▓▓ ▓▓ ▓▓ ▓▓
+ ▀▀▀▀ ▀▀    ▀▀ ▀▀ ▀▀  ▀▀▀▀ ▀▀▀▀▀  ▀▀▀▀  ▀▀▀  ▀▀ ▀▀ ▀▀ ▀▀
+</pre>
+
+[![Neovim](https://img.shields.io/badge/Neovim-0.12%2B-57A143?style=for-the-badge&logo=neovim&logoColor=white)](https://neovim.io)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-macOS-000000?style=for-the-badge&logo=apple&logoColor=white)]()
+[![Lua](https://img.shields.io/badge/Lua-5.1-2C2D72?style=for-the-badge&logo=lua&logoColor=white)]()
 
 My Neovim configuration. Lua on [lazy.nvim](https://github.com/folke/lazy.nvim),
 built around [snacks.nvim](https://github.com/folke/snacks.nvim), deliberately
@@ -9,6 +22,8 @@ over files, popup completion on the command line, git in the gutter and on the
 statusline, sessions that remember your layout per project, and 43 colorschemes
 you can flip through with live preview and one keystroke.
 
+</div>
+
 ## Requirements
 
 - **Neovim >= 0.12, built with LuaJIT.** `\R` uses the `:restart` built-in,
@@ -16,7 +31,7 @@ you can flip through with live preview and one keystroke.
 - A **Nerd Font** in your terminal, for the file and statusline icons
 - **True colour.** The themes are 24-bit only, so macOS `Terminal.app` will
   render them wrong. iTerm2, Ghostty, WezTerm and Kitty are all fine.
-- **[`ripgrep`](https://github.com/BurntSushi/ripgrep)**, for `\ts`. The snacks
+- **[`ripgrep`](https://github.com/BurntSushi/ripgrep)**, for `\ps`. The snacks
   grep picker shells out to `rg`, so live grep does nothing without it.
 - **[`lazygit`](https://github.com/jesseduffield/lazygit)**, for `\gg`.
 - Optional: [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
@@ -43,13 +58,17 @@ Leader is `\` (Vim's default). Press it and pause to get a
 | `<C-t>` | toggle the explorer sidebar |
 | `<Tab>` / `<S-Tab>` | next / previous tab in this window's own strip |
 | `<C-q>` | close buffer, keeping the window layout |
-| `\tf` | find files (dropdown, no preview) |
-| `\ts` | live grep, search file contents |
+| `\pf` | find files (dropdown, no preview) |
+| `\ps` | live grep, search file contents |
+| `\pb` | open buffer list |
+| `\pn` | messages log |
 | `\gs` | git status (ivy panel) |
 | `\gg` | lazygit |
 | `\h` | Themery, the colorscheme picker with live preview |
 | `\d` | development mode: explorer left, file centre, `claude` and `pi` terminals right |
-| `\c` | toggleable terminal panel below |
+| `\tt` / `\tv` | toggleable shell: split bottom / split right |
+| `\tc` / `\tx` | toggleable claude: split bottom / split right |
+| `\tp` / `\to` | toggleable omp: split bottom / split right |
 | `\l` | reveal whitespace in this window |
 | `\R` | `:Restart`, re-execs nvim and restores the whole layout |
 | `\bd` | close buffer |
