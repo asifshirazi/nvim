@@ -18,6 +18,13 @@ return {
       options = {
         theme = "auto",       -- follows colorscheme switches
         globalstatus = false, -- one bar per window (laststatus=2)
+        -- Blank the statusline in snacks terminals: they already carry a winbar
+        -- label (snacks sets wo.winbar), so the bottom bar is redundant. lualine
+        -- owns per-window statuslines (it rewrites wo.statusline every refresh),
+        -- so this is the only lever that sticks -- a snacks win.wo.statusline
+        -- would be clobbered. The 1-row bar itself stays (laststatus=2); only its
+        -- lualine content is dropped.
+        disabled_filetypes = { statusline = { "snacks_terminal" } },
         -- Slant after the left sections, a rounded cap before the right ones.
         -- section_separators.left sits on the right edge of a|b|c; .right sits
         -- on the left edge of x|y|z. Written as \u{} so the source stays ASCII.
