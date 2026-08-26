@@ -11,24 +11,30 @@
 local M = {}
 
 local session_file = vim.fn.stdpath('state') .. '/restart-session.vim'
-local resumable = { 'claude', 'pi', 'omp' }   -- CLIs whose sessions survive via --continue
+-- Commands worth restoring in a terminal. claude/pi/omp resume via --continue
+-- when a saved session exists (has_session); btop and any other entry just
+-- relaunch (has_session returns false, so no flag is appended).
+local resumable = { 'claude', 'pi', 'omp', 'btop' }
 -- auto-session auto-restores at VimEnter whenever nvim starts with no file
 -- arguments -- exactly what :restart does. Drop a sentinel the pre_restore hook
 -- in lua/plugins/sessions.lua checks, so auto-session stands down for this one restart.
 local skip_flag = vim.fn.stdpath('state') .. '/restart-skip-autosession'
 
--- All three CLIs store sessions per working directory, under a mangled directory
+-- claude/pi/omp store sessions per working directory, under a mangled directory
 -- name. Passing --continue with no saved session makes them abort, so only add
--- the flag when one actually exists. Regex/glob strings are kept identical to
--- the VimScript original.
+-- the flag when one actually exists. Any other command (e.g. btop) has no
+-- session store and falls through to the else branch -> false, so it just
+-- relaunches. Regex/glob strings are kept identical to the VimScript original.
 local function has_session(cmd, cwd)
+  -- cmd may carry args (e.g. "claude --model opus"); match on the binary only.
+  local bin = vim.fn.matchstr(cmd, [[^\S\+]])
   local c = vim.fn.fnamemodify(vim.fn.expand(cwd), ':p:h')
   local dir
-  if cmd == 'claude' then        -- ~/.claude/projects/<cwd with / and . as ->
+  if bin == 'claude' then        -- ~/.claude/projects/<cwd with / and . as ->
     dir = vim.fn.expand('~/.claude/projects/') .. vim.fn.substitute(c, '[/.]', '-', 'g')
-  elseif cmd == 'pi' then        -- ~/.pi/agent/sessions/-<cwd+/ with / as ->-
+  elseif bin == 'pi' then        -- ~/.pi/agent/sessions/-<cwd+/ with / as ->-
     dir = vim.fn.expand('~/.pi/agent/sessions/-') .. vim.fn.substitute(c .. '/', '/', '-', 'g') .. '-'
-  elseif cmd == 'omp' then       -- ~/.omp/agent/sessions/<$HOME-relative cwd, / as ->
+  elseif bin == 'omp' then       -- ~/.omp/agent/sessions/<$HOME-relative cwd, / as ->
     local home = vim.fn.substitute(vim.fn.expand('~'), '/$', '', '')
     local rel
     if c == home or vim.fn.stridx(c, home .. '/') == 0 then
@@ -49,10 +55,11 @@ function _G.__RestartHasSession(cmd, cwd)
   return has_session(cmd, cwd) and 1 or 0
 end
 
--- A pane opened as a plain `:terminal` and then used to launch claude/pi by
--- hand records only the shell (term://cwd//PID:/bin/zsh) -- nvim never knew
--- about the child process. Look for a resumable CLI among the shell's
--- descendants and record that instead.
+-- A pane opened as a plain `:terminal` and then used to launch claude/pi/btop
+-- by hand records only the shell (term://cwd//PID:/bin/zsh) -- nvim never knew
+-- about the child process. Look for a known command among the shell's
+-- descendants and record its FULL command line (binary basenamed, flags kept),
+-- so e.g. `btop -p 0` is restored with its flags, not bare `btop`.
 local function resumable_descendant(pid, depth)
   if depth > 3 then
     return ''
@@ -60,9 +67,14 @@ local function resumable_descendant(pid, depth)
   for _, kid in ipairs(vim.fn.split(vim.fn.system('pgrep -P ' .. vim.fn.shellescape(pid)), "\n")) do
     kid = vim.fn.trim(kid)
     if kid ~= '' then
-      local name = vim.fn.fnamemodify(vim.fn.trim(vim.fn.system('ps -o comm= -p ' .. vim.fn.shellescape(kid))), ':t')
-      if vim.fn.index(resumable, name) >= 0 then
-        return name
+      -- 'command=' gives the full argv (binary + flags); 'comm=' would drop flags.
+      local full = vim.fn.trim(vim.fn.system('ps -o command= -p ' .. vim.fn.shellescape(kid)))
+      if full ~= '' then
+        local first = vim.fn.matchstr(full, [[^\S\+]])          -- binary, maybe a full path
+        local name = vim.fn.fnamemodify(first, ':t')            -- basename for matching
+        if vim.fn.index(resumable, name) >= 0 then
+          return name .. string.sub(full, #first + 1)           -- basename + " flags..."
+        end
       end
       local deeper = resumable_descendant(kid, depth + 1)
       if deeper ~= '' then
@@ -85,7 +97,10 @@ local function terminal_overrides()
         if cmd ~= '' then
           local base = vim.fn.matchstr(b.name, '^term://.\\{-}//\\d\\+:')
           local cwd = vim.fn.matchstr(b.name, '^term://\\zs.\\{-}\\ze//\\d\\+:')
-          map[b.name] = base .. cmd .. (has_session(cmd, cwd) and '\\ --continue' or '')
+          -- In a term:// buffer name, argv separators are backslash-escaped
+          -- spaces, so escape the flags cmd now carries before splicing it in.
+          local escaped = cmd:gsub(' ', '\\ ')
+          map[b.name] = base .. escaped .. (has_session(cmd, cwd) and '\\ --continue' or '')
         end
       end
     end
@@ -125,28 +140,41 @@ function M.resume_patch(path)
   vim.fn.writefile(resume_rewrite(vim.fn.readfile(path)), path)
 end
 
--- Explorer pickers are scratch buffers and do not survive mksession: close
--- them (across all tabs) before a session is written. snacks schedules the
--- window teardown (picker/core/picker.lua M:close), so drain the event loop
--- until the sidebar windows are really gone -- otherwise mksession captures a
--- half-closed picker window as a spurious empty split. Returns whether any
--- explorer was open. Also used by auto-session's pre_save hook
--- (lua/plugins/sessions.lua).
+-- Capture snacks terminals and what resumable CLI each is running. Returns
+-- { ids = [...], cmds = {[id] = 'cmd --continue'} }. include_hidden picks
+-- all_state (toggled-off terminals too) over open_state (visible only).
+local function capture_terminals(include_hidden)
+  local terminals = require("terminals")
+  local states = include_hidden and terminals.all_state() or terminals.open_state()
+  local ids, cmds = {}, {}
+  for _, ts in ipairs(states) do
+    ids[#ids + 1] = ts.id
+    local pid = vim.fn.getbufvar(ts.bufnr, 'terminal_job_pid', 0)
+    if pid and pid ~= 0 and pid ~= '' then
+      local bname = vim.api.nvim_buf_get_name(ts.bufnr)
+      local cwd = vim.fn.matchstr(bname, '^term://\\zs.\\{-}\\ze//\\d\\+:')
+      local cli = resumable_descendant(pid, 0)
+      if cli ~= '' then
+        cmds[ts.id] = cli .. (has_session(cli, cwd) and ' --continue' or '')
+      end
+    end
+  end
+  return { ids = ids, cmds = cmds }
+end
+
+-- Explorer pickers are scratch buffers and do not survive mksession. Only a
+-- bare p:close is safe here: force-deleting the buffer, force-closing the
+-- window, or draining with vim.wait all HANG the quit when the picker is the
+-- focused window on ExitPre (the scheduled teardown can't complete mid-exit).
+--
+-- p:close only schedules the teardown, so mksession still captures the sidebar
+-- as a spurious empty window. That residue is cleaned on the restore side by
+-- restore_layout (close_empty_windows), not here. Returns whether any explorer
+-- was open.
 function M.close_explorers()
   if not package.loaded['snacks'] then return false end
   local explorers = Snacks.picker.get({ source = 'explorer', tab = false })
-  for _, p in ipairs(explorers) do p:close() end
-  if #explorers > 0 then
-    vim.wait(500, function()
-      for _, win in ipairs(vim.api.nvim_list_wins()) do
-        local ft = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
-        if ft:find('snacks_picker', 1, true) then
-          return false
-        end
-      end
-      return true
-    end, 10)
-  end
+  for _, p in ipairs(explorers) do pcall(function() p:close() end) end
   return #explorers > 0
 end
 
@@ -167,6 +195,28 @@ function M.open_dirs()
   return dirs
 end
 
+-- Close windows showing an empty, unnamed, unmodified buffer -- the residue
+-- mksession leaves where the explorer sidebar was (p:close only scheduled its
+-- teardown, so the closed sidebar was captured as an empty split). Skipped for
+-- floats and never closes the last window. Used by restore_layout after the
+-- real explorer is reopened, so the restored layout has no leftover empty pane.
+local function close_empty_windows()
+  for _, w in ipairs(vim.api.nvim_list_wins()) do
+    if #vim.api.nvim_list_wins() <= 1 then break end
+    if vim.api.nvim_win_is_valid(w) and vim.api.nvim_win_get_config(w).relative == '' then
+      local b = vim.api.nvim_win_get_buf(w)
+      local empty = vim.api.nvim_buf_get_name(b) == ''
+        and vim.bo[b].buftype == ''
+        and not vim.bo[b].modified
+        and vim.api.nvim_buf_line_count(b) <= 1
+        and (vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] or '') == ''
+      if empty then
+        pcall(vim.api.nvim_win_close, w, false)
+      end
+    end
+  end
+end
+
 -- Reopen the explorer and restore the pre-restart window sizes. mksession
 -- records sizes AFTER the explorer is closed (the other panes expand to fill
 -- the freed columns), and reopening the sidebar reflows them again -- so the
@@ -176,10 +226,14 @@ end
 -- sub-command is pcall'd so a stale winnr (e.g. a transient float) can't abort
 -- the rest. winrestcmd already double-passes to converge.
 function M.restore_layout(winsizes, open_dirs)
+  -- The window mksession left focused is a real file window. Snacks.explorer.open
+  -- steals focus to the sidebar, so remember it and hand focus back at the end --
+  -- restore should land on the file, not the tree (parity with the old \d path).
+  local file_win = vim.api.nvim_get_current_win()
   Snacks.explorer.open()
   local tries = 0
   local done = false
-  local timer = (vim.uv or vim.loop).new_timer()
+  local timer = vim.uv.new_timer()
   timer:start(30, 30, vim.schedule_wrap(function()
     -- schedule_wrap defers each tick, so several can queue before the timer is
     -- stopped; the done guard makes the teardown+apply run exactly once.
@@ -216,51 +270,48 @@ function M.restore_layout(winsizes, open_dirs)
             end
           end)
         end
-        for _, c in ipairs(vim.split(winsizes, "|", { trimempty = true })) do
-          pcall(vim.cmd, c)
+        -- Remove the empty split mksession left where the sidebar was, before
+        -- sizing -- so winsizes apply to the real (explorer+file+terminals) set.
+        close_empty_windows()
+        -- Skip winsizes when called from auto-session: the session file
+        -- already carries the correct window sizes, and re-applying stale
+        -- winsizes with different window numbers clobbers the layout.
+        if winsizes and winsizes ~= '' then
+          for _, c in ipairs(vim.split(winsizes, "|", { trimempty = true })) do
+            pcall(vim.cmd, c)
+          end
         end
         -- Clear any stale cells left by the re-exec + async resize.
         pcall(vim.cmd, "redraw!")
+        -- Hand focus back to the file window (the explorer/terminal reopens
+        -- stole it). Fall back to any listed file window if the original is gone.
+        if vim.api.nvim_win_is_valid(file_win)
+          and vim.bo[vim.api.nvim_win_get_buf(file_win)].buftype == '' then
+          pcall(vim.api.nvim_set_current_win, file_win)
+        else
+          for _, w in ipairs(vim.api.nvim_list_wins()) do
+            local b = vim.api.nvim_win_get_buf(w)
+            if vim.bo[b].buftype == '' and vim.bo[b].buflisted then
+              pcall(vim.api.nvim_set_current_win, w)
+              break
+            end
+          end
+        end
       end
     end
   end))
 end
 
--- Write the session file, with the two fix-ups above applied.
-function M.save()
-  -- Close explorer sidebars first, remembering whether any were open so the
-  -- session file can reopen one. Capture, before closing: the full-layout window
-  -- sizes (explorer still open) and the set of expanded folders, both restored
-  -- after the sidebar is reopened -- see M.restore_layout.
-  local winsizes = vim.fn.winrestcmd()
-  local open_dirs = M.open_dirs()
-  -- Snacks terminals (lua/terminals.lua) don't survive mksession as managed
-  -- windows -- capture which are open and which resumable CLI (claude/pi/omp)
-  -- is running inside each, then wipe them so the session doesn't restore them
-  -- as unmanaged (non-toggleable) plain terminals. Reopened after restore.
-  local _term_states = require("terminals").open_state()
-  local term_ids, term_cmds = {}, {}
-  for _, ts in ipairs(_term_states) do
-    term_ids[#term_ids + 1] = ts.id
-    local pid = vim.fn.getbufvar(ts.bufnr, 'terminal_job_pid', 0)
-    if pid and pid ~= 0 and pid ~= '' then
-      local bname = vim.api.nvim_buf_get_name(ts.bufnr)
-      local cwd = vim.fn.matchstr(bname, '^term://\\zs.\\{-}\\ze//\\d\\+:')
-      local cli = resumable_descendant(pid, 0)
-      if cli ~= '' then
-        term_cmds[ts.id] = cli .. (has_session(cli, cwd) and ' --continue' or '')
-      end
-    end
-  end
-  local had_explorer = M.close_explorers()
-  require("terminals").close_all()
-  vim.cmd('mksession! ' .. vim.fn.fnameescape(session_file))
-  local lines = resume_rewrite(vim.fn.readfile(session_file))
+-- Append the restore fix-up lines to a captured session: [No Name] sweep,
+-- explorer reopen (+ pane sizes), winbar strips, snacks-terminal reopen, and
+-- an optional confirmation notify. Shared by M.save (:Restart) and the
+-- per-cwd auto-session replacement below.
+local function append_restore(lines, o)
   -- The restore can leave an empty unnamed buffer listed but windowless -- an
   -- unwanted [No Name] tab. Sweep those.
   vim.list_extend(lines, {
     [[]],
-    [[" added by :Restart -- drop empty unnamed buffers left by the restore]],
+    [[" added by session save -- drop empty unnamed buffers left by the restore]],
     [[for s:b in getbufinfo({"buflisted": 1})]],
     [[  if empty(s:b.name) && empty(s:b.windows) && !s:b.changed]],
     [[    silent! execute "bwipeout" s:b.bufnr]],
@@ -268,58 +319,251 @@ function M.save()
     [[endfor]],
     [[unlet! s:b]],
   })
-  if had_explorer then
+  if o.had_explorer then
     local parts = {}
-    for _, d in ipairs(open_dirs) do
+    for _, d in ipairs(o.open_dirs or {}) do
       parts[#parts + 1] = string.format("%q", d)
     end
     vim.list_extend(lines, {
       '',
-      '" added by :Restart -- reopen the explorer, its expanded folders and pane sizes',
-      'silent! lua require("restart").restore_layout([==[' .. winsizes .. ']==], {'
+      '" added by session save -- reopen the explorer, its expanded folders and pane sizes',
+      'silent! lua require("restart").restore_layout([==[' .. (o.winsizes or '') .. ']==], {'
         .. table.concat(parts, ',') .. '})',
     })
   end
-  -- Per-window buffer strips (lua/winbar.lua). Appended last so the lists
-  -- resolve against the final buffer set.
+  -- Per-window buffer strips (lua/winbar.lua). Appended after the layout is
+  -- back so the lists resolve against the final buffer set.
   vim.list_extend(lines, require("winbar").session_lines())
-  -- Reopen the snacks terminals that were open, as managed (toggleable) ones,
-  -- resuming any claude/pi/omp sessions that were running inside them.
-  if #term_ids > 0 then
+  -- Reopen snacks terminals as managed (toggleable) ones, resuming any
+  -- claude/pi/omp session that was running inside each. Skipped by the light
+  -- periodic save, which leaves terminals running and lets mksession capture
+  -- them as plain resumable term:// panes instead.
+  if o.term_ids and #o.term_ids > 0 then
     local cmds_lua = ''
-    if not vim.tbl_isempty(term_cmds) then
+    if o.term_cmds and not vim.tbl_isempty(o.term_cmds) then
       local kv = {}
-      for id, cmd in pairs(term_cmds) do
+      for id, cmd in pairs(o.term_cmds) do
         kv[#kv + 1] = '[' .. id .. ']=' .. string.format('%q', cmd)
       end
       cmds_lua = ',{' .. table.concat(kv, ',') .. '}'
     end
     vim.list_extend(lines, {
       '',
-      '" added by :Restart -- reopen the snacks terminals (toggleable again)',
-      'silent! lua require("terminals").reopen({' .. table.concat(term_ids, ',') .. '}' .. cmds_lua .. ')',
+      '" added by session save -- reopen the snacks terminals (toggleable again)',
+      'silent! lua require("terminals").reopen({' .. table.concat(o.term_ids, ',') .. '}' .. cmds_lua .. ')',
     })
   end
-  -- Confirm the restore in the new instance, once the layout is back. Deferred
-  -- so it lands after the synchronous restore (and reads as "done").
-  local restored = had_explorer and 'layout, explorer and claude/pi/omp sessions'
-    or 'layout and claude/pi/omp sessions'
-  vim.list_extend(lines, {
-    '',
-    '" added by :Restart -- confirm the restore',
-    'silent! lua vim.schedule(function() vim.notify("Restart complete: restored ' .. restored .. '", vim.log.levels.INFO, { title = "Restart" }) end)',
+  if o.notify then
+    vim.list_extend(lines, {
+      '',
+      '" added by session save -- confirm the restore',
+      'silent! lua vim.schedule(function() vim.notify("Session restored", vim.log.levels.INFO, { title = "Session" }) end)',
+    })
+  end
+  return lines
+end
+
+-- Capture, close, mksession, patch, append -- the common write path. Uses
+-- `term` (from open_state or all_state) for the terminals to reopen, writes
+-- `path`, and returns the captured { winsizes, open_dirs, had_explorer } so a
+-- live caller can reopen what it closed.
+local function write_session(path, term, notify)
+  local winsizes = vim.fn.winrestcmd()
+  local open_dirs = M.open_dirs()
+  local had_explorer = M.close_explorers()
+  require("terminals").close_all()
+  vim.cmd('mksession! ' .. vim.fn.fnameescape(path))
+  local lines = resume_rewrite(vim.fn.readfile(path))
+  append_restore(lines, {
+    winsizes = winsizes, open_dirs = open_dirs, had_explorer = had_explorer,
+    term_ids = term.ids, term_cmds = term.cmds, notify = notify,
   })
-  vim.fn.writefile(lines, session_file)
+  vim.fn.writefile(lines, path)
+  return { winsizes = winsizes, open_dirs = open_dirs, had_explorer = had_explorer }
+end
+
+-- :Restart's save: global file, visible terminals only, confirmation notify.
+-- The re-exec kills everything, so nothing is reopened here -- the session
+-- file does it all on source.
+function M.save()
+  local term = capture_terminals(false)  -- visible terminals only
+  write_session(session_file, term, true)
   return session_file
 end
 
 function M.run()
-  vim.api.nvim_echo({
-    { 'restart: restoring everything (layout, explorer, claude/pi/omp sessions)' },
-  }, true, {})
+  vim.api.nvim_echo({ { 'restart: restoring session' } }, true, {})
   M.save()
   vim.fn.writefile({ tostring(vim.fn.localtime()) }, skip_flag)
   vim.cmd('restart source ' .. vim.fn.fnameescape(session_file))
+end
+
+-- ============================================================================
+-- Auto-session replacement: per-cwd session saved on quit and periodically,
+-- restored on launch. Reuses the machinery above so a plain quit + reopen
+-- restores exactly what :Restart does. Replaces rmagatti/auto-session.
+-- ============================================================================
+
+local sessions_dir = vim.fn.stdpath('state') .. '/restart-sessions'
+-- Bare home/root dirs never get a session (matches auto-session's default).
+local suppressed = {
+  vim.fn.fnamemodify(vim.fn.expand('~'), ':p:h'),
+  vim.fn.fnamemodify(vim.fn.expand('~/Downloads'), ':p:h'),
+  '/',
+}
+
+-- Per-cwd session file, or nil for a suppressed dir. cwd is percent-encoded
+-- so it survives as a single flat filename.
+function M.session_path()
+  local cwd = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h')
+  for _, s in ipairs(suppressed) do
+    if cwd == s then return nil end
+  end
+  local enc = cwd:gsub('[^%w%-_]', function(ch)
+    return string.format('%%%02X', string.byte(ch))
+  end)
+  vim.fn.mkdir(sessions_dir, 'p')
+  return sessions_dir .. '/' .. enc .. '.vim'
+end
+
+-- True if the current layout is worth saving: at least one named buffer or a
+-- snacks terminal. Prevents a failed/empty restore (single [No Name]) from
+-- overwriting a good session on the next quit.
+local function worth_saving()
+  if #require("terminals").all_state() > 0 then return true end
+  for _, b in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+    if b.name ~= '' then return true end
+  end
+  return false
+end
+
+-- Full save for a normal quit (ExitPre): close explorer + terminals, write the
+-- per-cwd file with toggleable-terminal reopen lines. No reopen here (nvim is
+-- exiting). close_explorers force-closes the sidebar synchronously, so this is
+-- safe on ExitPre and leaves a clean layout for mksession.
+function M.save_cwd()
+  local path = M.session_path()
+  if not path or not worth_saving() then return end
+  write_session(path, capture_terminals(true), false)  -- include hidden terminals
+end
+
+-- Lightweight periodic save for crash recovery. Does NOT close/kill terminals
+-- (killing a running claude/omp every interval would be destructive); mksession
+-- captures them as plain resumable term:// panes instead. The explorer is
+-- closed and reopened (fast, no process). Guarded against firing in the
+-- command-line window, where mksession throws.
+function M.save_cwd_light()
+  if vim.fn.getcmdwintype() ~= '' then return false end
+  local path = M.session_path()
+  if not path or not worth_saving() then return false end
+  local winsizes = vim.fn.winrestcmd()
+  local open_dirs = M.open_dirs()
+  local had_explorer = M.close_explorers()  -- explorer only; terminals left running
+  local ok = pcall(vim.cmd, 'mksession! ' .. vim.fn.fnameescape(path))
+  if ok then
+    local lines = resume_rewrite(vim.fn.readfile(path))
+    append_restore(lines, { winsizes = winsizes, open_dirs = open_dirs, had_explorer = had_explorer })
+    vim.fn.writefile(lines, path)
+  end
+  if had_explorer then M.restore_layout(winsizes, open_dirs) end
+  return ok
+end
+
+-- :SessionSave -- manual checkpoint. Uses the light (non-destructive) save so
+-- it never kills a running claude/omp/btop; the quit save (ExitPre) still does
+-- the full toggleable-terminal save.
+function M.save_now()
+  local path = M.session_path()
+  if not path then
+    vim.notify('No session for this directory (suppressed)', vim.log.levels.WARN, { title = 'Session' })
+    return
+  end
+  if M.save_cwd_light() then
+    vim.notify('Session saved', vim.log.levels.INFO, { title = 'Session' })
+  else
+    vim.notify('Nothing to save for this directory', vim.log.levels.WARN, { title = 'Session' })
+  end
+end
+
+-- :SessionDelete -- remove the current directory's saved session and reset to
+-- a clean slate: close the explorer + terminals, collapse to one window, park
+-- on a fresh blank buffer, wipe the previous unmodified buffers (modified ones
+-- are kept so no unsaved work is lost), then open the snacks dashboard -- or
+-- stay on the blank buffer if the dashboard is disabled/unavailable.
+function M.delete_session()
+  local path = M.session_path()
+  local existed = path and vim.fn.filereadable(path) == 1
+  if existed then vim.fn.delete(path) end
+  pcall(function() M.close_explorers() end)
+  pcall(function() require("terminals").close_all() end)
+  pcall(vim.cmd, 'silent! only')
+  pcall(vim.cmd, 'enew')  -- park on a blank buffer before wiping the old ones
+  local keep = vim.api.nvim_get_current_buf()
+  for _, b in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+    if b.changed == 0 and b.bufnr ~= keep then
+      pcall(vim.api.nvim_buf_delete, b.bufnr, {})
+    end
+  end
+  -- Dashboard when enabled; otherwise the blank buffer above is the end state.
+  if (Snacks.config.dashboard or {}).enabled ~= false then
+    pcall(function() Snacks.dashboard.open() end)
+  end
+  vim.notify('Session removed', vim.log.levels.INFO, { title = 'Session' })
+end
+
+-- Source the per-cwd session file if one exists, then announce it through the
+-- notifier (noice) -- parity with :Restart's own confirmation. Deferred so the
+-- message lands after the async layout restore (restore_layout's timer).
+function M.restore_cwd()
+  local path = M.session_path()
+  if not path or vim.fn.filereadable(path) == 0 then return end
+  vim.cmd('silent! source ' .. vim.fn.fnameescape(path))
+  vim.defer_fn(function()
+    -- Skip the stale "restored" toast if the session was deleted (:SessionDelete)
+    -- or we've since landed on the dashboard -- both mean nothing is restored now.
+    if vim.fn.filereadable(path) == 0 then return end
+    if vim.bo[vim.api.nvim_get_current_buf()].filetype == 'snacks_dashboard' then return end
+    vim.notify('Session restored', vim.log.levels.INFO, { title = 'Session' })
+  end, 200)
+end
+
+-- Register the autocmds and periodic timer. Called once from init.lua.
+function M.setup()
+  local grp = vim.api.nvim_create_augroup('restart_session', { clear = true })
+  -- Restore on a clean launch (no file args). :Restart re-execs and sources
+  -- its own global file, dropping the skip flag first -- honour it so this
+  -- launch does not also source the per-cwd file (double restore).
+  vim.api.nvim_create_autocmd('VimEnter', {
+    group = grp, nested = true,
+    callback = function()
+      if vim.fn.argc(-1) > 0 then return end
+      if vim.fn.filereadable(skip_flag) == 1 then
+        local stamp = tonumber(vim.fn.readfile(skip_flag)[1] or '') or 0
+        vim.fn.delete(skip_flag)
+        if (os.time() - stamp) <= 60 then return end
+      end
+      -- Deferred via a short timer, not vim.schedule: at VimEnter the snacks
+      -- dashboard still opens (on a scheduled tick) and would clobber the
+      -- restore. An 80ms timer lands restore_cwd after the dashboard and other
+      -- startup handlers have settled, so the restored layout is the last word.
+      local t = vim.uv.new_timer()
+      t:start(80, 0, vim.schedule_wrap(function()
+        t:stop()
+        if not t:is_closing() then t:close() end
+        M.restore_cwd()
+      end))
+    end,
+  })
+  -- Save on ExitPre, NOT VimLeavePre: by VimLeavePre the snacks terminal
+  -- buffers are already torn down, so a VimLeavePre save captures no
+  -- terminals. ExitPre fires earlier, while they are still alive.
+  vim.api.nvim_create_autocmd('ExitPre', {
+    group = grp,
+    callback = function() pcall(M.save_cwd) end,
+  })
+  -- Periodic crash-recovery save (non-destructive to terminals).
+  local timer = vim.uv.new_timer()
+  timer:start(60000, 60000, vim.schedule_wrap(function() pcall(M.save_cwd_light) end))
 end
 
 return M

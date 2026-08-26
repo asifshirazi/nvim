@@ -93,17 +93,46 @@ function M.open_state()
   return states
 end
 
+-- Like open_state but scans ALL buffers, including toggled-off (hidden)
+-- terminals. Used by auto-session so terminals that were dismissed before
+-- quitting are still captured and restored on next launch.
+function M.all_state()
+  local states, seen = {}, {}
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.bo[b].filetype == 'snacks_terminal' then
+      local st = vim.b[b].snacks_terminal
+      if st and st.id and specs[st.id] and not seen[st.id] then
+        seen[st.id] = true
+        states[#states + 1] = { id = st.id, bufnr = b }
+      end
+    end
+  end
+  return states
+end
+
 -- Wipe all open snacks terminal windows. Used by :Restart before mksession, so
 -- the session never captures them as unmanaged plain terminals (which come back
 -- non-toggleable). The shell dies on the re-exec regardless, like every other
 -- terminal pane.
+--
+-- Force-deleting a terminal buffer kills its job (non-zero status), and snacks'
+-- auto_close TermClose handler fires a "Terminal exited with code -1" error for
+-- that (terminal.lua). The notify is scheduled, so filter vim.notify for a short
+-- window and restore it after, to keep an intentional close quiet.
 function M.close_all()
+  local orig = vim.notify
+  vim.notify = function(msg, level, opts)
+    local text = type(msg) == 'table' and table.concat(msg, '\n') or msg
+    if type(text) == 'string' and text:find('Terminal exited', 1, true) then return end
+    return orig(msg, level, opts)
+  end
   for _, w in ipairs(vim.api.nvim_list_wins()) do
     local b = vim.api.nvim_win_get_buf(w)
     if vim.bo[b].filetype == "snacks_terminal" then
       pcall(vim.api.nvim_buf_delete, b, { force = true })
     end
   end
+  vim.defer_fn(function() vim.notify = orig end, 300)
 end
 
 -- Reopen the given ids as managed snacks terminals (so \tt/\tv/\tc/\tx/\tp/\to
