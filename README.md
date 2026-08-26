@@ -69,7 +69,7 @@ Leader is `\` (Vim's default). Press it and pause to get a
 | `\tc` / `\tx` | toggleable claude: split bottom / split right |
 | `\tp` / `\to` | toggleable omp: split bottom / split right |
 | `\l` | reveal whitespace in this window |
-| `\R` | `:Restart`, re-execs nvim and restores the whole layout |
+| `\R` | `:RestartRestoreSession`, re-execs nvim and restores the whole layout |
 | `\bd` | close buffer |
 
 `\d` is the one worth explaining. It lays out a whole working session in a
@@ -106,7 +106,7 @@ whatever colorscheme is active.
 | Statusline | lualine, fed by gitsigns |
 | Command line | noice (floating cmdline) + blink.cmp |
 | Notifications | snacks notifier, behind noice |
-| Sessions | auto-session, plus `:Restart` |
+| Sessions | built-in per-directory save/restore (`lua/session.lua`), plus `:RestartRestoreSession` |
 | Buffer tabs | winbar strip, drawn per window (in this config) |
 | Icons | nvim-web-devicons |
 | Cursor | smear-cursor (animated cursor trail) |
@@ -115,7 +115,7 @@ whatever colorscheme is active.
 ## Layout
 
 ```
-init.lua          entry point: settings, lazy bootstrap, keymaps, autoreload, :Restart
+init.lua          entry point: settings, lazy bootstrap, keymaps, autoreload, session
 lua/config/
   options.lua       settings, appearance, providers
   lazy.lua          lazy.nvim bootstrap and setup
@@ -125,19 +125,20 @@ lua/plugins/        one spec file per concern
   cmdline.lua       blink.cmp (cmdline only) + noice
   statusline.lua    lualine + gitsigns
   colorschemes.lua  the bundled themes + themery
-  sessions.lua      auto-session and its hooks
   whichkey.lua      the \ menu, hand-ordered
   smear-cursor.lua  animated cursor trail
 lua/
   winbar.lua        per-window buffer tabs, and the <Tab> cycling they feed
-  restart.lua       :Restart, required on first use
+  session.lua       per-directory session save/restore + :RestartRestoreSession
   autoreload.lua    reload files changed outside nvim, even mid-edit
 ```
 
 Sessions are saved per working directory, so reopening `nvim` in a project
-restores the windows and tabs you left behind. There is no session file to name
-or manage. Terminal panes running `claude`, `pi` or `omp` come back with
-`--continue`, so each resumes where it left off.
+restores the windows, tabs, explorer and terminals you left behind. Nothing to
+name or manage: the layout saves on quit and every minute, and terminal panes
+running `claude`, `pi` or `omp` come back with `--continue`, each resuming where
+it left off. `:SessionSave` checkpoints on demand and `:SessionDelete` clears
+the current directory's session.
 
 Everything is commented with the *reason* for a setting rather than a
 restatement of it, usually with a `file:line` pointer into the plugin source

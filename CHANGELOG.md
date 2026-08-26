@@ -5,6 +5,51 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-08-26
+
+Sessions are built in now: a per-directory save/restore, reusing the
+:RestartRestoreSession machinery, replaces auto-session. A plain quit and
+reopen brings back exactly what the restart command does.
+
+### Added
+
+- **Per-directory sessions.** Your layout saves on quit and every minute, and
+  restores on the next launch in the same directory: files, windows, the
+  explorer (expanded folders and pane widths), the per-window buffer strips,
+  and the toggleable claude/pi/omp terminals, each resumed where it left off.
+  Focus lands on the file, not the tree.
+- **`:SessionSave`** writes a checkpoint without disrupting the layout (it never
+  kills a running terminal), and **`:SessionDelete`** removes the current
+  directory's session and drops you on the dashboard (or a blank buffer when the
+  dashboard is off).
+- **Terminal commands restore with their flags.** A pane running `btop -p 0`
+  (or any flagged command) comes back verbatim, not as a bare `btop`.
+
+### Changed
+
+- **Sessions no longer use [auto-session](https://github.com/rmagatti/auto-session).**
+  The save/restore is built on the same code `:RestartRestoreSession` uses, so
+  both paths restore identically. The module that holds it, formerly
+  `lua/restart.lua`, is now `lua/session.lua`.
+- **`:Restart` is renamed `:RestartRestoreSession`** (`\R` and the bare `restart`
+  abbreviation follow). Session notifications are generic now.
+
+### Removed
+
+- **rmagatti/auto-session**, replaced by the built-in session module.
+
+### Fixed
+
+- **`:qa` / `:qa!` no longer hangs** when run from the explorer or a snacks
+  terminal window. The quit save uses a teardown that is safe mid-exit, and the
+  empty split it can leave behind is cleaned on the next restore rather than
+  drained during the quit.
+- **A relaunched layout is no longer mangled.** The empty pane mksession left
+  where the sidebar was is closed on restore before window sizes are applied.
+- **No stray "Terminal exited with code -1"** when a session with a terminal is
+  saved or deleted, and no stale "Session restored" toast after `:SessionDelete`
+  lands on the dashboard.
+
 ## [0.3.1] - 2026-08-25
 
 The command line moves to blink.cmp, terminal panes tone with the sidebar, and
@@ -289,6 +334,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.3.2]: https://github.com/asifshirazi/nvim/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/asifshirazi/nvim/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/asifshirazi/nvim/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/asifshirazi/nvim/compare/v0.2.3...v0.2.4
