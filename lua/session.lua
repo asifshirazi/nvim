@@ -1,5 +1,5 @@
 -- Session management: save the layout (files, windows, explorer, per-window
--- buffer strips, and toggleable terminals) and restore it on the next launch.
+-- buffer strips, toggleable terminals, and the active colorscheme) and restore
 --
 -- Restore works by generating a session file: :mksession captures tabs, windows
 -- and buffers, then fix-up lines are appended that rebuild what mksession can't
@@ -315,6 +315,20 @@ local function append_restore(lines, o)
     [[endfor]],
     [[unlet! s:b]],
   })
+  -- Restore the active colorscheme. The picker commits a pick only for the
+  -- session, so without this a quit-reopen or :RestartRestoreSession would snap
+  -- back to the default (lua/plugins/colorschemes.lua). background is
+  -- forced after the scheme loads, to reproduce exactly what was on screen --
+  -- some schemes (e.g. modus_operandi) render light without setting it.
+  local scheme = vim.g.colors_name
+  if scheme and scheme ~= '' then
+    vim.list_extend(lines, {
+      '',
+      '" added by session save -- restore the active colorscheme',
+      'silent! colorscheme ' .. scheme,
+      'silent! set background=' .. vim.o.background,
+    })
+  end
   if o.had_explorer then
     local parts = {}
     for _, d in ipairs(o.open_dirs or {}) do

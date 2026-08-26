@@ -1,5 +1,5 @@
--- Statusline: lualine fed by gitsigns -- the same pairing LazyVim ships
--- (nickjj's setup). gitsigns diffs each buffer against the git index: it
+-- Statusline: lualine fed by gitsigns. gitsigns diffs each buffer against the
+-- git index: it
 -- draws the hunk signs in the gutter (rendered by snacks.statuscolumn) and
 -- exposes b:gitsigns_status_dict, which lualine's diff component reads for
 -- the +n ~n -n counts. The branch segment is lualine's own.
@@ -16,8 +16,8 @@ return {
     end,
     opts = {
       options = {
-        theme = "auto",       -- follows themery colorscheme switches
-        globalstatus = false, -- one bar per window (nickjj keeps laststatus=2)
+        theme = "auto",       -- follows colorscheme switches
+        globalstatus = false, -- one bar per window (laststatus=2)
         -- Slant after the left sections, a rounded cap before the right ones.
         -- section_separators.left sits on the right edge of a|b|c; .right sits
         -- on the left edge of x|y|z. Written as \u{} so the source stays ASCII.

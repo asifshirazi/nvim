@@ -115,7 +115,7 @@ return {
       -- sidebar instead of the lighter editor Normal. snacks links SnacksNormal
       -- -> NormalFloat only with default=true, and tokyonight defines it first
       -- with no bg, so re-assert the link here and on every colorscheme change
-      -- (themery \h re-applies the theme, which would otherwise clobber it).
+      -- (the \h picker re-applies the theme, which would otherwise clobber it).
       local function tone_snacks_normal()
         vim.api.nvim_set_hl(0, "SnacksNormal", { link = "NormalFloat" })
         vim.api.nvim_set_hl(0, "SnacksNormalNC", { link = "NormalFloat" })

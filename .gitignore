@@ -6,7 +6,7 @@ autoload/plug.vim
 autoload/plugged/
 
 # Runtime state written by plugins, all under stdpath('data'|'state'):
-#   themery/state.json, auto-session sessions, restart-skip-autosession
+#   auto-session sessions, restart-skip-autosession
 # Nothing of it belongs in the config, but guard the legacy paths anyway.
 session*.vim
 *.swp

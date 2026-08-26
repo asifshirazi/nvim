@@ -22,9 +22,8 @@ return {
         default = {},
         providers = {
           cmdline = {
-            -- Command NAMES need 4+ chars before the menu shows (matches
-            -- nickjj's tuning); once past the first word -- args and paths --
-            -- it completes immediately.
+            -- Command NAMES need 4+ chars before the menu shows; once past
+            -- the first word -- args and paths -- it completes immediately.
             min_keyword_length = function(ctx)
               if ctx.mode == "cmdline" and string.find(ctx.line, " ") == nil then
                 return 4

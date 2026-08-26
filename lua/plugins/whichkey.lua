@@ -59,7 +59,7 @@ return {
         { '<leader>g', group = 'git', icon = { icon = '\u{f02a2}', color = 'orange' } },                         -- nf-md-git
         { '<leader>gg', desc = 'Lazygit', icon = { icon = '\u{f02a2}', color = 'orange' } },                     -- nf-md-git
         { '<leader>gs', desc = 'Git status', icon = { icon = '\u{f062c}', color = 'orange' } },                  -- nf-md-source_branch
-        { '<leader>h', desc = 'Themery (colorscheme)', icon = { icon = '\u{f03d8}', color = 'purple' } },        -- nf-md-palette
+        { '<leader>h', desc = 'Colorschemes', icon = { icon = '\u{f03d8}', color = 'purple' } },        -- nf-md-palette
         { '<leader>t', group = 'terminal', icon = { icon = '\u{f018d}', color = 'red' } },              -- nf-md-console
         { '<leader>tt', desc = 'Terminal split bottom', icon = { icon = '\u{f018d}', color = 'red' } },    -- nf-md-console
         { '<leader>tv', desc = 'Terminal split right', icon = { icon = '\u{f018d}', color = 'red' } },     -- nf-md-console

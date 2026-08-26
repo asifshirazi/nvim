@@ -5,6 +5,29 @@ All notable changes to this config are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-08-26
+
+The colorscheme setup drops the themery picker for a static default
+(github_dark_tritanopia) plus the snacks colorscheme picker -- nickjj's
+browse-then-edit model.
+
+### Added
+
+- **github_dark_tritanopia is the default colorscheme**; gruvbox joins the
+  bundled themes too.
+- **`\h` opens the snacks colorscheme picker** -- a compact, preview-less list
+  that live-applies each scheme as you scroll. The active theme is marked with a
+  left dot and preselected on open, so reopening lands on your last pick. `<CR>`
+  commits, `<Esc>` reverts to the theme you started on.
+- **The active colorscheme is saved in the session** (`lua/session.lua`), so a
+  quit-reopen or `:RestartRestoreSession` keeps your pick. A fresh launch with
+  no session falls back to the default in `lua/plugins/colorschemes.lua`.
+
+### Removed
+
+- **[themery](https://github.com/zaldih/themery.nvim)**, replaced by the snacks
+  colorscheme picker.
+
 ## [0.3.2] - 2026-08-26
 
 Sessions are built in now: a per-directory save/restore, reusing the
@@ -334,6 +357,7 @@ First tagged version. A Vimscript Neovim config built on vim-plug, with no LSP.
 - Plugins install to `~/.local/share/nvim/plugged`, vim-plug's own default,
   rather than inside the config directory.
 
+[0.3.3]: https://github.com/asifshirazi/nvim/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/asifshirazi/nvim/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/asifshirazi/nvim/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/asifshirazi/nvim/compare/v0.2.4...v0.3.0

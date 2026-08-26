@@ -63,7 +63,7 @@ Leader is `\` (Vim's default). Press it and pause to get a
 | `\pn` | messages log |
 | `\gs` | git status (ivy panel) |
 | `\gg` | lazygit |
-| `\h` | Themery, the colorscheme picker with live preview |
+| `\h` | colorscheme picker (snacks), live preview |
 | `\d` | development mode: explorer left, file centre, `claude` and `pi` terminals right |
 | `\tt` / `\tv` | toggleable shell: split bottom / split right |
 | `\tc` / `\tx` | toggleable claude: split bottom / split right |
@@ -84,15 +84,20 @@ floating input. Dotfiles are visible, and git status is marked per file.
 
 ## Colorschemes
 
-`\h` opens [themery](https://github.com/zaldih/themery.nvim), which lists every
-colorscheme on the runtimepath (Neovim's built-ins plus everything installed)
-and remembers your pick across restarts. Live preview as you scroll.
+The default is `github_dark_tritanopia`, one of
+[github-nvim-theme](https://github.com/projekt0n/github-nvim-theme)'s 11 variants
+(light, high-contrast and colourblind included). `\h` opens the snacks
+colorscheme picker with live preview as you scroll; a committed pick is
+remembered by the session (a fresh launch with no session returns to the
+default). To change the default permanently, edit the colorscheme name in the
+github-nvim-theme spec in `lua/plugins/colorschemes.lua`.
 
-Bundled: [github](https://github.com/projekt0n/github-nvim-theme) (11 variants
-including light, high-contrast and colourblind),
+Also installed, all pickable from `\h`:
+[gruvbox](https://github.com/ellisonleao/gruvbox.nvim),
 [nord](https://github.com/nordtheme/vim),
 [vague](https://github.com/vague-theme/vague.nvim),
-[modus](https://github.com/miikanissi/modus-themes.nvim) (WCAG AAA).
+[modus](https://github.com/miikanissi/modus-themes.nvim) (WCAG AAA),
+[tokyonight](https://github.com/folke/tokyonight.nvim).
 
 The statusline follows along automatically: lualine's `auto` theme picks up
 whatever colorscheme is active.
@@ -124,7 +129,7 @@ lua/plugins/        one spec file per concern
   snacks.lua        explorer, pickers, notifier, terminal, QoL modules
   cmdline.lua       blink.cmp (cmdline only) + noice
   statusline.lua    lualine + gitsigns
-  colorschemes.lua  the bundled themes + themery
+  colorschemes.lua  the bundled themes (github_dark_tritanopia default)
   whichkey.lua      the \ menu, hand-ordered
   smear-cursor.lua  animated cursor trail
 lua/

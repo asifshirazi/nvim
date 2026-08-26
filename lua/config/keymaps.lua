@@ -53,8 +53,86 @@ Snacks.toggle.dim():map('<leader>uD', { silent = true })
 Snacks.toggle.zen():map('<leader>uz', { silent = true })
 Snacks.toggle.option('list', { name = 'Whitespace' }):map('<leader>uW', { silent = true })
 
--- Colorscheme picker (see lua/plugins/colorschemes.lua for the theme list)
-vim.keymap.set('n', '<leader>h', '<cmd>Themery<cr>', { silent = true, desc = 'Themery (colorscheme)' })
+-- Colorscheme picker: compact list, no search bar or preview pane. The scheme applies
+-- live as you scroll -- on_change fires even with the preview hidden (snacks
+-- picker.lua _show_preview runs on_change before the preview-window guard).
+-- Esc reverts to the theme you started on, <CR> commits. A committed pick is
+-- persisted by the session (lua/session.lua); a fresh launch with no session
+-- falls back to the default (github_dark_tritanopia) in lua/plugins/colorschemes.lua.
+-- The active theme is marked (a left dot) and preselected on open; after a pick
+-- it commits, so reopening lands on that previous choice.
+vim.keymap.set('n', '<leader>h', function()
+  local original, original_bg = vim.g.colors_name or 'github_dark_tritanopia', vim.o.background
+  local committed = false
+  Snacks.picker.colorschemes({
+    -- No search bar: hide input, focus the list (single <Esc> then cancels). The
+    -- full layout is inlined -- a provided layout.layout skips preset resolution,
+    -- so hidden/footer apply cleanly. Footer shows the <CR>/<Esc> help.
+    focus = 'list',
+    layout = {
+      hidden = { 'input', 'preview' },
+      layout = {
+        backdrop = false,
+        width = 0.3, min_width = 40, max_width = 60,
+        height = 0.4, min_height = 2,
+        box = 'vertical',
+        border = true,
+        title = 'ColorScheme Manager',
+        title_pos = 'center',
+        footer = {
+          { ' ', 'SnacksFooter' },
+          { ' <Enter> ', 'SnacksFooterKey' }, { ' save ', 'SnacksFooterDesc' },
+          { '     ', 'SnacksFooter' },
+          { ' <Esc> ', 'SnacksFooterKey' }, { ' close ', 'SnacksFooterDesc' },
+          { ' ', 'SnacksFooter' },
+        },
+        footer_pos = 'center',
+        { win = 'input', height = 1, border = 'bottom' },
+        { win = 'list', border = 'none' },
+        { win = 'preview', title = '{preview}', height = 0.4, border = 'top' },
+      },
+    },
+    -- Mark the active theme and move the cursor onto it. `current` is set once
+    -- here, before any on_change scroll, so the dot stays pinned to the theme
+    -- that was active when the picker opened (= last session's pick on reopen).
+    finder = function(_, ctx)
+      local items = require('snacks.picker.source.vim').colorschemes()
+      -- Ascending by name (the source globs in runtimepath order). Sort before
+      -- the set_target below so its index matches the displayed row.
+      table.sort(items, function(a, b) return a.text < b.text end)
+      for i, item in ipairs(items) do
+        if item.text == vim.g.colors_name then
+          item.current = true
+          ctx.picker.list:set_target(i)
+        end
+      end
+      return items
+    end,
+    format = function(item, picker)
+      local ret = { { item.current and '● ' or '  ', 'DiagnosticOk' } }
+      vim.list_extend(ret, require('snacks.picker.format').text(item, picker))
+      return ret
+    end,
+    on_change = function(_, item)
+      if item then pcall(vim.cmd.colorscheme, item.text) end
+    end,
+    confirm = function(picker, item)
+      committed = true
+      picker:close()
+      if item then
+        vim.schedule(function() pcall(vim.cmd.colorscheme, item.text) end)
+      end
+    end,
+    on_close = function()
+      if not committed then
+        vim.schedule(function()
+          pcall(vim.cmd.colorscheme, original)
+          vim.o.background = original_bg
+        end)
+      end
+    end,
+  })
+end, { silent = true, desc = 'Colorschemes' })
 
 -- Dev layout: explorer left, file middle, claude top-right, pi bottom-right.
 -- Terminals launch via :terminal so restart.lua's resume_patch term:// rewrite

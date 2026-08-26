@@ -1,8 +1,8 @@
 -- Basic settings, appearance and providers.
 -- Ported from init.vim sections 2, 3 and 11. The colorscheme is deliberately
--- NOT set here: that is the nord spec's job (lua/plugins/colorschemes.lua), so
--- the fresh-machine fallback runs at plugin-config time and themery can then
--- override it. See the load-order notes in lua/config/lazy.lua.
+-- NOT set here: that is the github-nvim-theme spec's job (lua/plugins/colorschemes.lua),
+-- which runs vim.cmd.colorscheme at plugin-config time. See the load-order
+-- notes in lua/config/lazy.lua.
 
 -- `syntax enable` is dropped: syntax is on by default in Neovim.
 
@@ -44,6 +44,13 @@ vim.opt.listchars = {
 -- matcher, so this only affects the native wildmenu fallback -- fuzzy there
 -- too, for the case where blink's binary is unavailable.
 vim.opt.wildoptions:append("fuzzy")
+
+-- Suppress the swapfile "ATTENTION" message (incl. W325 "Ignoring swapfile from
+-- Nvim process N"). :RestartRestoreSession re-execs nvim and reopens the same
+-- files while the old process is still exiting, so its swapfiles are briefly
+-- seen and warned about -- pure noise here, since the session, not swap, is the
+-- recovery path.
+vim.opt.shortmess:append("A")
 
 -- Providers
 vim.g.loaded_perl_provider = 0
