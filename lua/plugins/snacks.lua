@@ -53,17 +53,13 @@ return {
         },
       },
       explorer = { enabled = true }, -- replace_netrw = true default
+      image = { enabled = true },
       indent = { enabled = true },
       input = { enabled = true },
       notifier = { enabled = true },
-      -- Toggles integrate with which-key (default which_key=true): \l shows an
-      -- enabled/disabled icon and a notification. See \l in keymaps.lua.
       toggle = { which_key = true },
       picker = {
         enabled = true,
-        -- 'buflist' extends the dropdown layout with a key-hint footer on the
-        -- inner bordered box. Used only by \pb so other dropdown pickers stay
-        -- clean. Footer text matches the actual bindings from sources.lua.
         layouts = {
           buflist = {
             layout = {
@@ -103,7 +99,6 @@ return {
     },
     config = function(_, opts)
       require("snacks").setup(opts)
-      -- Parity with the old NERDTree quit-if-last-window autocmd: :q of the last
       -- file window with only the explorer left quits nvim. If the explorer
       -- layout keeps a second (input) window, winnr('$')==1 is never true and
       -- this is a harmless no-op (explorer just stays open).
