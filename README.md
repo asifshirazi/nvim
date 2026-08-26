@@ -21,6 +21,8 @@ over files, popup completion on the command line, git in the gutter and on the
 statusline, sessions that remember your layout per project, and 43 colorschemes
 you can flip through with live preview and one keystroke.
 
+![Neovim configuration screenshot](assets/screenshot.webp)
+
 </div>
 
 ## Requirements
