@@ -56,6 +56,9 @@ return {
       indent = { enabled = true },
       input = { enabled = true },
       notifier = { enabled = true },
+      -- Toggles integrate with which-key (default which_key=true): \l shows an
+      -- enabled/disabled icon and a notification. See \l in keymaps.lua.
+      toggle = { which_key = true },
       picker = {
         enabled = true,
         -- 'buflist' extends the dropdown layout with a key-hint footer on the
@@ -169,6 +172,42 @@ return {
                 break
               end
               target = vim.fs.dirname(target)
+            end
+          end)
+        end,
+      })
+
+      -- Open :help (and K / keywordprg) in a centered float instead of a split.
+      -- FileType fires as the help window is set up, so defer one tick, then move
+      -- the help buffer out of its split into a Snacks.win float (keeping the tag
+      -- cursor). Following a help link reuses the float: if the buffer is already
+      -- in a floating window we leave it, so navigation stays distraction-free.
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "help",
+        callback = function(ev)
+          vim.schedule(function()
+            if not vim.api.nvim_buf_is_valid(ev.buf) or vim.bo[ev.buf].buftype ~= "help" then
+              return
+            end
+            local wins = vim.fn.win_findbuf(ev.buf)
+            for _, w in ipairs(wins) do
+              if vim.api.nvim_win_get_config(w).relative ~= "" then return end
+            end
+            local cursor
+            for _, w in ipairs(wins) do
+              cursor = cursor or vim.api.nvim_win_get_cursor(w)
+              pcall(vim.api.nvim_win_close, w, false)
+            end
+            local win = Snacks.win({
+              buf = ev.buf,
+              width = 80,
+              height = 0.85,
+              border = "rounded",
+              title = " Help ",
+              title_pos = "center",
+            })
+            if cursor and win and win.win and vim.api.nvim_win_is_valid(win.win) then
+              pcall(vim.api.nvim_win_set_cursor, win.win, cursor)
             end
           end)
         end,

@@ -443,25 +443,33 @@ function M.save_cwd()
   write_session(path, capture_terminals(true), false)  -- include hidden terminals
 end
 
--- Lightweight periodic save for crash recovery. Does NOT close/kill terminals
--- (killing a running claude/omp every interval would be destructive); mksession
--- captures them as plain resumable term:// panes instead. The explorer is
--- closed and reopened (fast, no process). Guarded against firing in the
--- command-line window, where mksession throws. Returns whether it saved.
+-- Lightweight periodic save for crash recovery. Fully non-destructive: it never
+-- closes the explorer or terminals and never moves focus -- doing any of that
+-- every interval would yank the cursor to a file window and reset the sidebar.
+-- Focus is only handed to the file window on a real load/restart (restore_cwd /
+-- the restart command), never here. mksession captures the live layout as-is
+-- (an open explorer becomes an empty split), and restore_layout's
+-- close_empty_windows cleans that residue on the next launch. Guarded against
+-- the command-line window, where mksession throws.
 function M.save_cwd_light()
   if vim.fn.getcmdwintype() ~= '' then return false end
   local path = M.session_path()
   if not path or not worth_saving() then return false end
+  local had_explorer = false
+  for _, w in ipairs(vim.api.nvim_list_wins()) do
+    if vim.bo[vim.api.nvim_win_get_buf(w)].filetype:find('snacks_picker', 1, true) then
+      had_explorer = true
+      break
+    end
+  end
   local winsizes = vim.fn.winrestcmd()
   local open_dirs = M.open_dirs()
-  local had_explorer = M.close_explorers()  -- explorer only; terminals left running
   local ok = pcall(vim.cmd, 'mksession! ' .. vim.fn.fnameescape(path))
   if ok then
     local lines = resume_rewrite(vim.fn.readfile(path))
     append_restore(lines, { winsizes = winsizes, open_dirs = open_dirs, had_explorer = had_explorer })
     vim.fn.writefile(lines, path)
   end
-  if had_explorer then M.restore_layout(winsizes, open_dirs) end
   return ok
 end
 

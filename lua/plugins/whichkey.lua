@@ -17,6 +17,7 @@ return {
       -- patterns are lowercase, and kept narrow so they don't shadow the built-in
       -- search/window/buffer rules that already resolve.
       wk.setup {
+        preset = 'helix',  -- right-side rounded box, matching snacks' toggle.md demo
         sort = { 'manual' },
         icons = {
           rules = {
@@ -58,7 +59,6 @@ return {
         { '<leader>g', group = 'git', icon = { icon = '\u{f02a2}', color = 'orange' } },                         -- nf-md-git
         { '<leader>gg', desc = 'Lazygit', icon = { icon = '\u{f02a2}', color = 'orange' } },                     -- nf-md-git
         { '<leader>gs', desc = 'Git status', icon = { icon = '\u{f062c}', color = 'orange' } },                  -- nf-md-source_branch
-        { '<leader>l', desc = 'Toggle listchars', icon = { icon = '\u{f0208}', color = 'cyan' } },               -- nf-md-eye
         { '<leader>h', desc = 'Themery (colorscheme)', icon = { icon = '\u{f03d8}', color = 'purple' } },        -- nf-md-palette
         { '<leader>t', group = 'terminal', icon = { icon = '\u{f018d}', color = 'red' } },              -- nf-md-console
         { '<leader>tt', desc = 'Terminal split bottom', icon = { icon = '\u{f018d}', color = 'red' } },    -- nf-md-console
@@ -69,6 +69,7 @@ return {
         { '<leader>to', desc = 'OMP split right', icon = { icon = '\u{f0729}', color = 'green' } },        -- nf-md-pi
         { '<leader>d', desc = 'Development mode', icon = { icon = '\u{f0bcc}', color = 'orange' } },             -- nf-md-view_split_vertical
         { '<leader>R', desc = 'Restart (restore everything)', icon = { icon = '\u{f0450}', color = 'green' } },  -- nf-md-refresh
+        { '<leader>u', group = 'toggle', icon = { icon = '\u{f0493}', color = 'cyan' } },                        -- nf-md-cog
         { '<leader>b', group = 'buffer', icon = { icon = '\u{f0219}', color = 'cyan' } },                        -- nf-md-file_document
         { '<leader>bd', desc = 'Close buffer', icon = { icon = '\u{f0156}', color = 'cyan' } },                  -- nf-md-close
       }

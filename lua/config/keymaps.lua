@@ -2,8 +2,7 @@
 --
 -- Requiring winbar here also loads it at startup (sets its tracking autocmds),
 -- the way sourcing config/winbar.vim did. Every map keeps { silent = true } and
--- carries a desc so which-key's icon rules (matched against desc:lower()) hit.
--- Leader is \ (mapleader is unset -- keep it that way).
+-- carries a desc. Leader is \ (mapleader is unset -- keep it that way).
 
 local winbar = require("winbar")
 
@@ -38,8 +37,21 @@ vim.keymap.set('n', '<leader>pb', function() Snacks.picker.buffers({ layout = 'b
 vim.keymap.set('n', '<leader>gg', function() Snacks.lazygit() end, { silent = true, desc = 'Lazygit' })
 vim.keymap.set('n', '<leader>gs', function() Snacks.picker.git_status({ layout = 'ivy' }) end, { silent = true, desc = 'Git status' })
 
--- Reveal whitespace in the current window ('listchars' set in options.lua).
-vim.keymap.set('n', '<leader>l', function() vim.wo.list = not vim.wo.list end, { silent = true, desc = 'Toggle listchars' })
+-- Toggle group (\u), built on Snacks.toggle: each shows an enabled/disabled
+-- icon + notification and self-registers in which-key (see toggle.which_key in
+-- lua/plugins/snacks.lua). Keys mirror LazyVim's <leader>u where the concept
+-- matches. \uW (whitespace/listchars) replaces the old \l. No LSP here, so no
+-- diagnostics/inlay-hint toggles.
+Snacks.toggle.option('spell'):map('<leader>us', { silent = true })
+Snacks.toggle.option('wrap'):map('<leader>uw', { silent = true })
+Snacks.toggle.line_number():map('<leader>ul', { silent = true })
+Snacks.toggle.option('relativenumber'):map('<leader>uL', { silent = true })
+Snacks.toggle.option('conceallevel', { off = 0, on = 2 }):map('<leader>uc', { silent = true })
+Snacks.toggle.indent():map('<leader>ug', { silent = true })
+Snacks.toggle.scroll():map('<leader>uS', { silent = true })
+Snacks.toggle.dim():map('<leader>uD', { silent = true })
+Snacks.toggle.zen():map('<leader>uz', { silent = true })
+Snacks.toggle.option('list', { name = 'Whitespace' }):map('<leader>uW', { silent = true })
 
 -- Colorscheme picker (see lua/plugins/colorschemes.lua for the theme list)
 vim.keymap.set('n', '<leader>h', '<cmd>Themery<cr>', { silent = true, desc = 'Themery (colorscheme)' })

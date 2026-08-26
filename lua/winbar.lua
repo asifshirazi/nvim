@@ -281,8 +281,7 @@ local function cycle(step)
   vim.cmd('buffer ' .. list[target + 1])
 end
 
--- Two named wrappers rather than one function taking a direction: which-key
--- matches its icon rules against the lowercased mapping description.
+-- Two named direction wrappers, so <Tab>/<S-Tab> map to distinct functions.
 function M.next()
   cycle(1)
 end
