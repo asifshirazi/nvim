@@ -74,4 +74,4 @@ vim.keymap.set('n', '<leader>tx', terminals.claude_vertical, { silent = true, de
 vim.keymap.set('n', '<leader>tp', terminals.omp_bottom,      { silent = true, desc = 'OMP split bottom' })
 vim.keymap.set('n', '<leader>to', terminals.omp_vertical,    { silent = true, desc = 'OMP split right' })
 
-vim.keymap.set('n', '<leader>R', '<cmd>Restart<cr>', { silent = true, desc = 'Restart (restore everything)' })
+vim.keymap.set('n', '<leader>R', '<cmd>RestartRestoreSession<cr>', { silent = true, desc = 'Restart (restore everything)' })

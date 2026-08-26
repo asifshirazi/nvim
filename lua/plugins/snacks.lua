@@ -1,7 +1,7 @@
 -- folke/snacks.nvim -- explorer, pickers, notifier, terminal, and QoL modules.
 -- Replaces the old file-tree/fuzzy-finder/notification/icon plugin stack.
 -- Keymaps live in lua/config/keymaps.lua. The dashboard lands only on an empty
--- startup with no session to restore; auto-session still restores project dirs.
+-- startup with no session to restore; lua/session.lua restores project dirs.
 
 return {
   {

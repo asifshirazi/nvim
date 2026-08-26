@@ -294,10 +294,8 @@ end
 -- ---- Sessions ----
 --
 -- :mksession cannot carry these lists ('sessionoptions' has no word for
--- window-local variables). Both savers ask for the lines below instead:
--- lua/restart.lua appends them to its own session file, and auto-session
--- returns them from save_extra_cmds, which lands in the session's companion
--- x.vim. Either route runs them after the whole layout is back.
+-- window-local variables), so lua/session.lua appends the lines below to the
+-- session file it writes; they run after the whole layout is back.
 
 function M.session_lines()
   local spec = {}
@@ -325,7 +323,7 @@ function M.session_lines()
   -- format. `silent!` degrades gracefully if v:lua.WinbarRestore is absent.
   return {
     '',
-    '" added by :Restart / auto-session -- rebuild the per-window buffer',
+    '" added by session save -- rebuild the per-window buffer',
     '" strips (lua/winbar.lua), which mksession cannot carry.',
     'silent! call v:lua.WinbarRestore(' .. vim.fn.string(spec) .. ')',
   }

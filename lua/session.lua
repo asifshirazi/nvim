@@ -1,12 +1,11 @@
--- :Restart -- restart Nvim, restoring the whole layout. Port of
--- autoload/restart.vim.
+-- Session management: save the layout (files, windows, explorer, per-window
+-- buffer strips, and toggleable terminals) and restore it on the next launch.
 --
--- :restart (Nvim 0.12+) quits, re-execs the server with the same argv and
--- reattaches the UI; :mksession captures tabs, windows and buffers. A running
--- process can't be checkpointed, so terminal panes would relaunch from
--- scratch -- rewrite their commands to resume the previous session instead.
--- The snacks explorer is a scratch picker mksession cannot carry: it is
--- closed before saving and reopened by a line injected into the session file.
+-- Restore works by generating a session file: :mksession captures tabs, windows
+-- and buffers, then fix-up lines are appended that rebuild what mksession can't
+-- carry -- the snacks explorer, the winbar strips, and the snacks terminals --
+-- and that resume claude/pi/omp/btop where they left off. The same generated
+-- file also backs the restart command, which re-execs nvim and sources it.
 
 local M = {}
 
@@ -15,16 +14,16 @@ local session_file = vim.fn.stdpath('state') .. '/restart-session.vim'
 -- when a saved session exists (has_session); btop and any other entry just
 -- relaunch (has_session returns false, so no flag is appended).
 local resumable = { 'claude', 'pi', 'omp', 'btop' }
--- auto-session auto-restores at VimEnter whenever nvim starts with no file
--- arguments -- exactly what :restart does. Drop a sentinel the pre_restore hook
--- in lua/plugins/sessions.lua checks, so auto-session stands down for this one restart.
+-- Sentinel the restart command drops before re-execing, so the launch after the
+-- re-exec restores from the global file only and does not ALSO restore the
+-- per-cwd session (double restore). See M.run and M.setup's VimEnter handler.
 local skip_flag = vim.fn.stdpath('state') .. '/restart-skip-autosession'
 
 -- claude/pi/omp store sessions per working directory, under a mangled directory
 -- name. Passing --continue with no saved session makes them abort, so only add
 -- the flag when one actually exists. Any other command (e.g. btop) has no
 -- session store and falls through to the else branch -> false, so it just
--- relaunches. Regex/glob strings are kept identical to the VimScript original.
+-- relaunches.
 local function has_session(cmd, cwd)
   -- cmd may carry args (e.g. "claude --model opus"); match on the binary only.
   local bin = vim.fn.matchstr(cmd, [[^\S\+]])
@@ -51,7 +50,7 @@ end
 
 -- Callable from the substitute() \= expression below via v:lua. Returns 1/0 so
 -- the Vim ternary in that expression works unchanged.
-function _G.__RestartHasSession(cmd, cwd)
+function _G.__SessionHasSession(cmd, cwd)
   return has_session(cmd, cwd) and 1 or 0
 end
 
@@ -117,7 +116,7 @@ local function resume_rewrite(lines)
   -- Terminal buffers are stored as  term://{cwd}//{pid}:{cmd}\ {args}
   local pattern = [[term://\(.\{-}\)//\d\+:\(]] .. table.concat(resumable, [[\|]])
     .. [[\)\%(\\ --continue\)\@!\ze\%(\\ \|\>\)]]
-  local repl = [[\=submatch(0) . (v:lua.__RestartHasSession(submatch(2), submatch(1)) ? "\\ --continue" : "")]]
+  local repl = [[\=submatch(0) . (v:lua.__SessionHasSession(submatch(2), submatch(1)) ? "\\ --continue" : "")]]
   for i, l in ipairs(lines) do
     lines[i] = vim.fn.substitute(l, pattern, repl, 'g')
   end
@@ -131,8 +130,8 @@ local function resume_rewrite(lines)
   return lines
 end
 
--- Patch a just-written session file in place. auto-session's post_save hook
--- passes it v:this_session, which mksession sets to the file it wrote.
+-- Patch a just-written session file in place, adding --continue to resumable
+-- terminal commands. Callers pass the file mksession just wrote.
 function M.resume_patch(path)
   if path == nil or path == '' or vim.fn.filereadable(path) == 0 then
     return
@@ -178,10 +177,10 @@ function M.close_explorers()
   return #explorers > 0
 end
 
--- Paths of the currently-expanded explorer folders, so :Restart can reopen
+-- Paths of the currently-expanded explorer folders, so restore can reopen
 -- exactly those on the fresh tree (the snacks Tree is per-process and comes
--- back collapsed after the re-exec). Walks the snacks.explorer.tree singleton;
--- pcall-guarded to return {} if the internals change.
+-- back collapsed). Walks the snacks.explorer.tree singleton; pcall-guarded to
+-- return {} if the internals change.
 function M.open_dirs()
   local dirs = {}
   pcall(function()
@@ -217,18 +216,17 @@ local function close_empty_windows()
   end
 end
 
--- Reopen the explorer and restore the pre-restart window sizes. mksession
--- records sizes AFTER the explorer is closed (the other panes expand to fill
--- the freed columns), and reopening the sidebar reflows them again -- so the
--- saved layout loses its widths. Re-apply the winrestcmd captured while the
--- explorer was still open, once the reopened sidebar window actually exists
--- (Snacks.explorer.open schedules the window, so poll briefly for it). Each
--- sub-command is pcall'd so a stale winnr (e.g. a transient float) can't abort
--- the rest. winrestcmd already double-passes to converge.
+-- Reopen the explorer and restore the saved window sizes. mksession records
+-- sizes AFTER the explorer is closed (the other panes expand to fill the freed
+-- columns), and reopening the sidebar reflows them again -- so the saved layout
+-- loses its widths. Re-apply the winrestcmd captured while the explorer was
+-- still open, once the reopened sidebar window actually exists (Snacks.explorer
+-- .open schedules the window, so poll briefly for it). Each sub-command is
+-- pcall'd so a stale winnr (e.g. a transient float) can't abort the rest.
 function M.restore_layout(winsizes, open_dirs)
   -- The window mksession left focused is a real file window. Snacks.explorer.open
   -- steals focus to the sidebar, so remember it and hand focus back at the end --
-  -- restore should land on the file, not the tree (parity with the old \d path).
+  -- restore should land on the file, not the tree.
   local file_win = vim.api.nvim_get_current_win()
   Snacks.explorer.open()
   local tries = 0
@@ -255,9 +253,9 @@ function M.restore_layout(winsizes, open_dirs)
         timer:close()
       end
       if ready then
-        -- Reopen the folders that were expanded before the restart. The snacks
-        -- Tree is per-process and comes back collapsed after the re-exec, so
-        -- re-open each saved path and re-render before sizing.
+        -- Reopen the folders that were expanded before. The snacks Tree is
+        -- per-process and comes back collapsed, so re-open each saved path and
+        -- re-render before sizing.
         if open_dirs and #open_dirs > 0 then
           pcall(function()
             local Tree = require("snacks.explorer.tree")
@@ -273,15 +271,13 @@ function M.restore_layout(winsizes, open_dirs)
         -- Remove the empty split mksession left where the sidebar was, before
         -- sizing -- so winsizes apply to the real (explorer+file+terminals) set.
         close_empty_windows()
-        -- Skip winsizes when called from auto-session: the session file
-        -- already carries the correct window sizes, and re-applying stale
-        -- winsizes with different window numbers clobbers the layout.
+        -- Empty winsizes means the session file already carries correct sizes;
+        -- re-applying stale ones with different window numbers clobbers them.
         if winsizes and winsizes ~= '' then
           for _, c in ipairs(vim.split(winsizes, "|", { trimempty = true })) do
             pcall(vim.cmd, c)
           end
         end
-        -- Clear any stale cells left by the re-exec + async resize.
         pcall(vim.cmd, "redraw!")
         -- Hand focus back to the file window (the explorer/terminal reopens
         -- stole it). Fall back to any listed file window if the original is gone.
@@ -303,9 +299,9 @@ function M.restore_layout(winsizes, open_dirs)
 end
 
 -- Append the restore fix-up lines to a captured session: [No Name] sweep,
--- explorer reopen (+ pane sizes), winbar strips, snacks-terminal reopen, and
--- an optional confirmation notify. Shared by M.save (:Restart) and the
--- per-cwd auto-session replacement below.
+-- explorer reopen (+ pane sizes), winbar strips, snacks-terminal reopen, and an
+-- optional confirmation notify. Shared by the restart-command save and the
+-- per-cwd session save below.
 local function append_restore(lines, o)
   -- The restore can leave an empty unnamed buffer listed but windowless -- an
   -- unwanted [No Name] tab. Sweep those.
@@ -327,7 +323,7 @@ local function append_restore(lines, o)
     vim.list_extend(lines, {
       '',
       '" added by session save -- reopen the explorer, its expanded folders and pane sizes',
-      'silent! lua require("restart").restore_layout([==[' .. (o.winsizes or '') .. ']==], {'
+      'silent! lua require("session").restore_layout([==[' .. (o.winsizes or '') .. ']==], {'
         .. table.concat(parts, ',') .. '})',
     })
   end
@@ -382,9 +378,9 @@ local function write_session(path, term, notify)
   return { winsizes = winsizes, open_dirs = open_dirs, had_explorer = had_explorer }
 end
 
--- :Restart's save: global file, visible terminals only, confirmation notify.
--- The re-exec kills everything, so nothing is reopened here -- the session
--- file does it all on source.
+-- The restart command's save: global file, visible terminals only, confirmation
+-- notify. The re-exec kills everything, so nothing is reopened here -- the
+-- session file does it all on source.
 function M.save()
   local term = capture_terminals(false)  -- visible terminals only
   write_session(session_file, term, true)
@@ -399,13 +395,13 @@ function M.run()
 end
 
 -- ============================================================================
--- Auto-session replacement: per-cwd session saved on quit and periodically,
--- restored on launch. Reuses the machinery above so a plain quit + reopen
--- restores exactly what :Restart does. Replaces rmagatti/auto-session.
+-- Per-cwd sessions: saved on quit (ExitPre) and periodically, restored on
+-- launch. Reuses the machinery above, so a plain quit + reopen restores the
+-- same layout the restart command does.
 -- ============================================================================
 
-local sessions_dir = vim.fn.stdpath('state') .. '/restart-sessions'
--- Bare home/root dirs never get a session (matches auto-session's default).
+local sessions_dir = vim.fn.stdpath('state') .. '/sessions'
+-- Bare home/root dirs never get a session.
 local suppressed = {
   vim.fn.fnamemodify(vim.fn.expand('~'), ':p:h'),
   vim.fn.fnamemodify(vim.fn.expand('~/Downloads'), ':p:h'),
@@ -439,8 +435,8 @@ end
 
 -- Full save for a normal quit (ExitPre): close explorer + terminals, write the
 -- per-cwd file with toggleable-terminal reopen lines. No reopen here (nvim is
--- exiting). close_explorers force-closes the sidebar synchronously, so this is
--- safe on ExitPre and leaves a clean layout for mksession.
+-- exiting). close_explorers uses a bare p:close (safe on ExitPre); the empty
+-- split it leaves is cleaned by restore_layout on the next launch.
 function M.save_cwd()
   local path = M.session_path()
   if not path or not worth_saving() then return end
@@ -451,7 +447,7 @@ end
 -- (killing a running claude/omp every interval would be destructive); mksession
 -- captures them as plain resumable term:// panes instead. The explorer is
 -- closed and reopened (fast, no process). Guarded against firing in the
--- command-line window, where mksession throws.
+-- command-line window, where mksession throws. Returns whether it saved.
 function M.save_cwd_light()
   if vim.fn.getcmdwintype() ~= '' then return false end
   local path = M.session_path()
@@ -511,9 +507,8 @@ function M.delete_session()
   vim.notify('Session removed', vim.log.levels.INFO, { title = 'Session' })
 end
 
--- Source the per-cwd session file if one exists, then announce it through the
--- notifier (noice) -- parity with :Restart's own confirmation. Deferred so the
--- message lands after the async layout restore (restore_layout's timer).
+-- Source the per-cwd session file if one exists, then announce it. Deferred so
+-- the message lands after the async layout restore (restore_layout's timer).
 function M.restore_cwd()
   local path = M.session_path()
   if not path or vim.fn.filereadable(path) == 0 then return end
@@ -529,10 +524,10 @@ end
 
 -- Register the autocmds and periodic timer. Called once from init.lua.
 function M.setup()
-  local grp = vim.api.nvim_create_augroup('restart_session', { clear = true })
-  -- Restore on a clean launch (no file args). :Restart re-execs and sources
-  -- its own global file, dropping the skip flag first -- honour it so this
-  -- launch does not also source the per-cwd file (double restore).
+  local grp = vim.api.nvim_create_augroup('session', { clear = true })
+  -- Restore on a clean launch (no file args). The restart command re-execs and
+  -- sources its own global file, dropping the skip flag first -- honour it so
+  -- this launch does not also source the per-cwd file (double restore).
   vim.api.nvim_create_autocmd('VimEnter', {
     group = grp, nested = true,
     callback = function()
@@ -555,8 +550,8 @@ function M.setup()
     end,
   })
   -- Save on ExitPre, NOT VimLeavePre: by VimLeavePre the snacks terminal
-  -- buffers are already torn down, so a VimLeavePre save captures no
-  -- terminals. ExitPre fires earlier, while they are still alive.
+  -- buffers are already torn down, so a VimLeavePre save captures no terminals.
+  -- ExitPre fires earlier, while they are still alive.
   vim.api.nvim_create_autocmd('ExitPre', {
     group = grp,
     callback = function() pcall(M.save_cwd) end,

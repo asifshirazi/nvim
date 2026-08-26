@@ -1,12 +1,12 @@
 -- Named, toggleable snacks terminals, shared by lua/config/keymaps.lua (the
--- \tt / \tv / \tc / \tx / \tp / \to mappings) and lua/restart.lua (reopen
--- across :Restart).
+-- \tt / \tv / \tc / \tx / \tp / \to mappings) and lua/session.lua (reopen on
+-- session restore).
 --
 -- snacks keys a terminal by { cmd, cwd, env, count } -- NOT its window position
 -- (snacks/terminal.lua M.tid). All terminals use cmd=nil (the default shell) so
--- restart.lua's resumable_descendant can walk the process tree, find claude/omp
+-- session.lua's resumable_descendant can walk the process tree, find claude/omp
 -- running as a child, and resume it with --continue. Fixed count ids keep each
--- pair distinct AND let :Restart reopen the very same ids toggleably.
+-- pair distinct AND let a restore reopen the very same ids toggleably.
 
 local M = {}
 
@@ -28,8 +28,8 @@ end
 -- For claude/omp terminals: check for an existing buffer BEFORE toggle (toggle
 -- creates the buffer, so checking after always finds it and skips the send).
 -- If the terminal is new, poll until the shell's job channel is live, then type
--- cmd. Subsequent toggles show/hide the existing pane -- no send. On :Restart,
--- reopen() handles resume via its own polling + cmds table.
+-- cmd. Subsequent toggles show/hide the existing pane -- no send. On a session
+-- restore, reopen() handles resume via its own polling + cmds table.
 local function open_with_cmd(id, cmd)
   local is_new = true
   for _, b in ipairs(vim.api.nvim_list_bufs()) do
@@ -77,8 +77,8 @@ function M.omp_bottom()      open_with_cmd(5, 'omp')    end
 function M.omp_vertical()    open_with_cmd(6, 'omp')    end
 
 -- State of snacks terminals currently open in a window. Returns {id, bufnr}
--- pairs so restart.lua can inspect each terminal's running process before
--- closing. Used by :Restart; see lua/restart.lua M.save.
+-- pairs so session.lua can inspect each terminal's running process before
+-- closing. See lua/session.lua M.save.
 function M.open_state()
   local states = {}
   for _, w in ipairs(vim.api.nvim_list_wins()) do
@@ -94,7 +94,7 @@ function M.open_state()
 end
 
 -- Like open_state but scans ALL buffers, including toggled-off (hidden)
--- terminals. Used by auto-session so terminals that were dismissed before
+-- terminals. Used by the per-cwd session save so terminals dismissed before
 -- quitting are still captured and restored on next launch.
 function M.all_state()
   local states, seen = {}, {}
@@ -110,10 +110,10 @@ function M.all_state()
   return states
 end
 
--- Wipe all open snacks terminal windows. Used by :Restart before mksession, so
--- the session never captures them as unmanaged plain terminals (which come back
--- non-toggleable). The shell dies on the re-exec regardless, like every other
--- terminal pane.
+-- Wipe all open snacks terminal windows. Used before mksession, so the session
+-- never captures them as unmanaged plain terminals (which come back
+-- non-toggleable). The shell dies on the re-exec/exit regardless, like every
+-- other terminal pane.
 --
 -- Force-deleting a terminal buffer kills its job (non-zero status), and snacks'
 -- auto_close TermClose handler fires a "Terminal exited with code -1" error for
@@ -138,8 +138,8 @@ end
 -- Reopen the given ids as managed snacks terminals (so \tt/\tv/\tc/\tx/\tp/\to
 -- toggle them again). Opened with cmd=nil so auto-insert etc. stay intact.
 -- cmds: optional {[id] = 'shell command string'} -- sent to the new shell once
--- its job channel is ready, used by :Restart to resume claude/omp sessions
--- that were running inside a terminal before the restart.
+-- its job channel is ready, used on session restore to resume claude/omp
+-- sessions that were running inside a terminal before.
 function M.reopen(ids, cmds)
   if not ids or #ids == 0 then return end
   local cur = vim.api.nvim_get_current_win()
