@@ -52,6 +52,13 @@ Snacks.toggle.scroll():map('<leader>uS', { silent = true })
 Snacks.toggle.dim():map('<leader>uD', { silent = true })
 Snacks.toggle.zen():map('<leader>uz', { silent = true })
 Snacks.toggle.option('list', { name = 'Whitespace' }):map('<leader>uW', { silent = true })
+-- Reverb sound effects (\uu). Reads/sets reverb's own enabled flag, so it stays
+-- in sync with :ReverbToggle / :ReverbEnable / :ReverbDisable.
+Snacks.toggle({
+  name = 'Sound effects',
+  get = function() return require('reverb.state').enabled end,
+  set = function(state) require('reverb.state').enabled = state end,
+}):map('<leader>uu', { silent = true })
 
 -- Snacks-terminal statusline (\ut). Default visible; the show/hide state is a
 -- persisted global preference (lua/term_statusline.lua) that survives restart
