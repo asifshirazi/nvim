@@ -53,6 +53,17 @@ Snacks.toggle.dim():map('<leader>uD', { silent = true })
 Snacks.toggle.zen():map('<leader>uz', { silent = true })
 Snacks.toggle.option('list', { name = 'Whitespace' }):map('<leader>uW', { silent = true })
 
+-- Snacks-terminal statusline (\ut). Default visible; the show/hide state is a
+-- persisted global preference (lua/term_statusline.lua) that survives restart
+-- and session restore, and applies to every snacks terminal at once. "On" =
+-- statusline shown.
+local term_sl = require('term_statusline')
+Snacks.toggle({
+  name = 'Terminal statusline',
+  get = term_sl.shown,
+  set = term_sl.set,
+}):map('<leader>ut', { silent = true })
+
 -- Colorscheme picker: compact list, no search bar or preview pane. The scheme applies
 -- live as you scroll -- on_change fires even with the preview hidden (snacks
 -- picker.lua _show_preview runs on_change before the preview-window guard).
