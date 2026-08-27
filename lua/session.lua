@@ -72,7 +72,12 @@ local function resumable_descendant(pid, depth)
         local first = vim.fn.matchstr(full, [[^\S\+]])          -- binary, maybe a full path
         local name = vim.fn.fnamemodify(first, ':t')            -- basename for matching
         if vim.fn.index(resumable, name) >= 0 then
-          return name .. string.sub(full, #first + 1)           -- basename + " flags..."
+          -- Strip --continue: it is the resume flag, re-added by the caller from
+          -- has_session. A restored terminal's argv already carries it, so keeping
+          -- it here stacks one more on every save/restore cycle (omp --continue
+          -- --continue ...). Real flags (e.g. `btop -p 0`) are preserved.
+          local flags = (string.sub(full, #first + 1):gsub('%s*%-%-continue', ''))
+          return name .. flags
         end
       end
       local deeper = resumable_descendant(kid, depth + 1)

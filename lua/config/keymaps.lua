@@ -134,6 +134,38 @@ vim.keymap.set('n', '<leader>h', function()
   })
 end, { silent = true, desc = 'Colorschemes' })
 
+-- \o : open group. \oi opens the image under the cursor in the OS viewer (full
+-- size, any terminal); \of reveals the file in Finder. Complements the inline
+-- preview snacks now renders on kitty (see the image config in snacks.lua).
+vim.keymap.set('n', '<leader>oi', function()
+  local line = vim.api.nvim_get_current_line()
+  local path = line:match('!%[[^%]]*%]%(([^%s%)]+)%)') or line:match('src="([^"]+)"')
+  if not path then
+    vim.notify('No image link on this line', vim.log.levels.WARN, { title = 'Image' })
+    return
+  end
+  -- resolve a relative path against the current file's directory
+  if not path:match('^%a[%w+.-]*://') and not path:match('^/') then
+    path = vim.fs.joinpath(vim.fn.expand('%:p:h'), path)
+  end
+  vim.ui.open(path)
+end, { silent = true, desc = 'Open image under cursor' })
+
+-- Reveal the current file in the system file manager. macOS `open -R` selects
+-- it in Finder; elsewhere, open the containing folder via vim.ui.open.
+vim.keymap.set('n', '<leader>of', function()
+  local file = vim.fn.expand('%:p')
+  if file == '' then
+    vim.notify('No file for this buffer', vim.log.levels.WARN, { title = 'Finder' })
+    return
+  end
+  if vim.fn.has('mac') == 1 then
+    vim.system({ 'open', '-R', file })
+  else
+    vim.ui.open(vim.fn.fnamemodify(file, ':h'))
+  end
+end, { silent = true, desc = 'Reveal file in Finder' })
+
 -- Dev layout: explorer left, file middle, claude top-right, pi bottom-right.
 -- Terminals launch via :terminal so restart.lua's resume_patch term:// rewrite
 -- keeps working. Splits are created before reveal because reveal targets the

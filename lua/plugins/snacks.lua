@@ -53,7 +53,13 @@ return {
         },
       },
       explorer = { enabled = true }, -- replace_netrw = true default
-      image = { enabled = true },
+      -- Inline markdown image preview. Works because kitty has the graphics
+      -- protocol AND unicode placeholders (snacks/image/terminal.lua), so snacks
+      -- grid-locks the image to the buffer text. On terminals without
+      -- placeholders (e.g. WezTerm) it falls back to an out-of-bounds float --
+      -- set doc = { enabled = false } there. \oi (keymaps.lua) opens the image
+      -- in the OS viewer as a terminal-independent alternative.
+      image = { enabled = true, doc = { enabled = true } },
       indent = { enabled = true },
       input = { enabled = true },
       notifier = { enabled = true },

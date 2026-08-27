@@ -60,6 +60,9 @@ return {
         { '<leader>gg', desc = 'Lazygit', icon = { icon = '\u{f02a2}', color = 'orange' } },                     -- nf-md-git
         { '<leader>gs', desc = 'Git status', icon = { icon = '\u{f062c}', color = 'orange' } },                  -- nf-md-source_branch
         { '<leader>h', desc = 'Colorschemes', icon = { icon = '\u{f03d8}', color = 'purple' } },        -- nf-md-palette
+        { '<leader>o', group = 'open', icon = { icon = '\u{f024b}', color = 'green' } },                    -- nf-md-folder
+        { '<leader>oi', desc = 'Open image under cursor', icon = { icon = '\u{f021f}', color = 'green' } }, -- nf-md-image
+        { '<leader>of', desc = 'Reveal file in Finder', icon = { icon = '\u{f024b}', color = 'blue' } },    -- nf-md-folder
         { '<leader>t', group = 'terminal', icon = { icon = '\u{f018d}', color = 'red' } },              -- nf-md-console
         { '<leader>tt', desc = 'Terminal split bottom', icon = { icon = '\u{f018d}', color = 'red' } },    -- nf-md-console
         { '<leader>tv', desc = 'Terminal split right', icon = { icon = '\u{f018d}', color = 'red' } },     -- nf-md-console
